@@ -107,11 +107,13 @@
                             {% endif %}
                         </p>
                         <p><strong>Total Charge:</strong> 
-                            {% if bill.total_charge %}
-                                ${{ bill.total_charge|floatformat:2 }}
-                            {% else %}
-                                N/A
-                            {% endif %}
+                            <span class="{% for error in validation_errors %}{% if error.type in 'total_charge_mismatch,total_charge_missing,total_charge_zero' %}charge-mismatch{% endif %}{% endfor %}">
+                                {% if bill.total_charge %}
+                                    ${{ bill.total_charge|floatformat:2 }}
+                                {% else %}
+                                    <span class="text-muted">Missing</span>
+                                {% endif %}
+                            </span>
                         </p>
                     </div>
                     <div class="col-md-6">
@@ -119,21 +121,44 @@
                             {% if bill.created_at %}
                                 {{ bill.created_at|date:"M d, Y H:i" }}
                             {% else %}
-                                N/A
+                                -
                             {% endif %}
                         </p>
                         <p><strong>Updated:</strong> 
                             {% if bill.updated_at %}
                                 {{ bill.updated_at|date:"M d, Y H:i" }}
                             {% else %}
-                                N/A
+                                -
                             {% endif %}
                         </p>
-                        <p><strong>Uploaded By:</strong> {{ bill.uploaded_by|default:"N/A" }}</p>
+                        <p><strong>Uploaded By:</strong> {{ bill.uploaded_by|default:"-" }}</p>
                     </div>
                 </div>
-                {% if bill.last_error %}
+                {% if validation_errors %}
                 <div class="alert alert-danger mt-3">
+                    <strong><i class="fas fa-exclamation-triangle"></i> Validation Issues:</strong>
+                    {% for error in validation_errors %}
+                        <div class="mt-2">
+                            <i class="fas fa-exclamation-circle"></i>
+                            {% if error.type == 'total_charge_mismatch' %}
+                                <strong>Total Charge Mismatch:</strong> The total charge (${{ error.total_charge|floatformat:2 }}) does not match the sum of line item charges (${{ error.line_items_sum|floatformat:2 }}). 
+                                <span class="text-danger">Difference: ${{ error.difference|floatformat:2 }}</span>
+                            {% elif error.type == 'total_charge_missing' %}
+                                <strong>Missing Total Charge:</strong> The total charge is missing but line items sum to ${{ error.line_items_sum|floatformat:2 }}. 
+                                <span class="text-danger">Total charge should be set to ${{ error.line_items_sum|floatformat:2 }}</span>
+                            {% elif error.type == 'total_charge_zero' %}
+                                <strong>Zero Total Charge:</strong> The total charge is $0.00 but line items sum to ${{ error.line_items_sum|floatformat:2 }}. 
+                                <span class="text-danger">Total charge should be ${{ error.line_items_sum|floatformat:2 }}</span>
+                            {% else %}
+                                {{ error.message }}
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                {% if bill.last_error %}
+                <div class="alert alert-warning mt-3">
                     <strong>Last Error:</strong> {{ bill.last_error }}
                 </div>
                 {% endif %}
@@ -156,10 +181,10 @@
                 </div>
             </div>
             <div class="card-body">
-                <p><strong>Name:</strong> {{ bill.patient_name|default:"N/A" }}</p>
-                <p><strong>Date of Birth:</strong> {{ bill.patient_dob|default:"N/A" }}</p>
-                <p><strong>ZIP Code:</strong> {{ bill.patient_zip|default:"N/A" }}</p>
-                <p><strong>Account Number:</strong> {{ bill.patient_account_no|default:"N/A" }}</p>
+                <p><strong>Name:</strong> {{ bill.patient_name|default:"-" }}</p>
+                <p><strong>Date of Birth:</strong> {{ bill.patient_dob|default:"-" }}</p>
+                <p><strong>ZIP Code:</strong> {{ bill.patient_zip|default:"-" }}</p>
+                <p><strong>Account Number:</strong> {{ bill.patient_account_no|default:"-" }}</p>
             </div>
         </div>
     </div>
@@ -176,10 +201,10 @@
                 </div>
             </div>
             <div class="card-body">
-                <p><strong>Provider Name:</strong> {{ bill.billing_provider_name|default:"N/A" }}</p>
-                <p><strong>TIN:</strong> {{ bill.billing_provider_tin|default:"N/A" }}</p>
-                <p><strong>NPI:</strong> {{ bill.billing_provider_npi|default:"N/A" }}</p>
-                <p><strong>Address:</strong> {{ bill.billing_provider_address|default:"N/A" }}</p>
+                <p><strong>Provider Name:</strong> {{ bill.billing_provider_name|default:"-" }}</p>
+                <p><strong>TIN:</strong> {{ bill.billing_provider_tin|default:"-" }}</p>
+                <p><strong>NPI:</strong> {{ bill.billing_provider_npi|default:"-" }}</p>
+                <p><strong>Address:</strong> {{ bill.billing_provider_address|default:"-" }}</p>
             </div>
         </div>
     </div>
@@ -202,22 +227,22 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <p><strong>Provider Name:</strong> {{ order_provider.name|default:"N/A" }}</p>
-                        <p><strong>NPI:</strong> {{ order_provider.npi|default:"N/A" }}</p>
-                        <p><strong>TIN:</strong> {{ order_provider.tin|default:"N/A" }}</p>
-                        <p><strong>Provider Type:</strong> {{ order_provider.provider_type|default:"N/A" }}</p>
-                        <p><strong>Provider Status:</strong> {{ order_provider.provider_status|default:"N/A" }}</p>
-                        <p><strong>Provider Network:</strong> {{ order_provider.provider_network|default:"N/A" }}</p>
+                        <p><strong>Provider Name:</strong> {{ order_provider.name|default:"-" }}</p>
+                        <p><strong>NPI:</strong> {{ order_provider.npi|default:"-" }}</p>
+                        <p><strong>TIN:</strong> {{ order_provider.tin|default:"-" }}</p>
+                        <p><strong>Provider Type:</strong> {{ order_provider.provider_type|default:"-" }}</p>
+                        <p><strong>Provider Status:</strong> {{ order_provider.provider_status|default:"-" }}</p>
+                        <p><strong>Provider Network:</strong> {{ order_provider.provider_network|default:"-" }}</p>
                     </div>
                     <div class="col-md-6">
-                        <p><strong>Address:</strong> {{ order_provider.address_line_1|default:"N/A" }}</p>
+                        <p><strong>Address:</strong> {{ order_provider.address_line_1|default:"-" }}</p>
                         {% if order_provider.address_line_2 %}
                         <p><strong>Address Line 2:</strong> {{ order_provider.address_line_2 }}</p>
                         {% endif %}
-                        <p><strong>City:</strong> {{ order_provider.city|default:"N/A" }}</p>
-                        <p><strong>State:</strong> {{ order_provider.state|default:"N/A" }}</p>
-                        <p><strong>Postal Code:</strong> {{ order_provider.postal_code|default:"N/A" }}</p>
-                        <p><strong>Phone:</strong> {{ order_provider.phone|default:"N/A" }}</p>
+                        <p><strong>City:</strong> {{ order_provider.city|default:"-" }}</p>
+                        <p><strong>State:</strong> {{ order_provider.state|default:"-" }}</p>
+                        <p><strong>Postal Code:</strong> {{ order_provider.postal_code|default:"-" }}</p>
+                        <p><strong>Phone:</strong> {{ order_provider.phone|default:"-" }}</p>
                         {% if order_provider.email %}
                         <p><strong>Email:</strong> {{ order_provider.email }}</p>
                         {% endif %}
@@ -232,16 +257,16 @@
                 <h6><i class="fas fa-credit-card"></i> Billing Address Information</h6>
                 <div class="row">
                     <div class="col-md-6">
-                        <p><strong>Billing Name:</strong> {{ order_provider.billing_name|default:"N/A" }}</p>
-                        <p><strong>Billing Address 1:</strong> {{ order_provider.billing_address_1|default:"N/A" }}</p>
+                        <p><strong>Billing Name:</strong> {{ order_provider.billing_name|default:"-" }}</p>
+                        <p><strong>Billing Address 1:</strong> {{ order_provider.billing_address_1|default:"-" }}</p>
                         {% if order_provider.billing_address_2 %}
                         <p><strong>Billing Address 2:</strong> {{ order_provider.billing_address_2 }}</p>
                         {% endif %}
                     </div>
                     <div class="col-md-6">
-                        <p><strong>Billing City:</strong> {{ order_provider.billing_address_city|default:"N/A" }}</p>
-                        <p><strong>Billing State:</strong> {{ order_provider.billing_address_state|default:"N/A" }}</p>
-                        <p><strong>Billing Postal Code:</strong> {{ order_provider.billing_address_postal_code|default:"N/A" }}</p>
+                        <p><strong>Billing City:</strong> {{ order_provider.billing_address_city|default:"-" }}</p>
+                        <p><strong>Billing State:</strong> {{ order_provider.billing_address_state|default:"-" }}</p>
+                        <p><strong>Billing Postal Code:</strong> {{ order_provider.billing_address_postal_code|default:"-" }}</p>
                     </div>
                 </div>
             </div>
@@ -281,22 +306,24 @@
                         </thead>
                         <tbody>
                             {% for item in line_items %}
-                            <tr>
-                                <td><code>{{ item.cpt_code|default:"N/A" }}</code></td>
-                                <td>{{ item.modifier|default:"N/A" }}</td>
-                                <td>{{ item.units|default:"N/A" }}</td>
+                            <tr {% for error in validation_errors %}{% if error.type in 'total_charge_mismatch,total_charge_missing,total_charge_zero' %}class="table-warning"{% endif %}{% endfor %}>
+                                <td><code>{{ item.cpt_code|default:"-" }}</code></td>
+                                <td>{{ item.modifier|default:"-" }}</td>
+                                <td>{{ item.units|default:"-" }}</td>
                                 <td>
                                     {% if item.charge_amount %}
-                                        ${{ item.charge_amount|floatformat:2 }}
+                                        <span class="{% for error in validation_errors %}{% if error.type in 'total_charge_mismatch,total_charge_missing,total_charge_zero' %}charge-mismatch{% endif %}{% endfor %}">
+                                            ${{ item.charge_amount|floatformat:2 }}
+                                        </span>
                                     {% else %}
-                                        N/A
+                                        -
                                     {% endif %}
                                 </td>
                                 <td>
                                     {% if item.allowed_amount %}
                                         ${{ item.allowed_amount|floatformat:2 }}
                                     {% else %}
-                                        N/A
+                                        -
                                     {% endif %}
                                 </td>
                                 <td>
@@ -304,8 +331,8 @@
                                         {{ item.decision|default:"Pending" }}
                                     </span>
                                 </td>
-                                <td>{{ item.date_of_service|default:"N/A" }}</td>
-                                <td>{{ item.place_of_service|default:"N/A" }}</td>
+                                <td>{{ item.date_of_service|default:"-" }}</td>
+                                <td>{{ item.place_of_service|default:"-" }}</td>
                                 <td>
                                     {% if item.id %}
                                     <div class="btn-group" role="group">
@@ -327,6 +354,28 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                    
+                    <!-- Line Items Summary -->
+                    {% if validation_errors %}
+                        {% for error in validation_errors %}
+                            {% if error.type in 'total_charge_mismatch,total_charge_missing,total_charge_zero' %}
+                            <div class="alert alert-info mt-3">
+                                <strong>Line Items Summary:</strong>
+                                <ul class="mb-0">
+                                    <li><strong>Total Charge (Bill):</strong> 
+                                        {% if error.total_charge is not None %}
+                                            <span class="text-danger fw-bold">${{ error.total_charge|floatformat:2 }}</span>
+                                        {% else %}
+                                            <span class="text-danger fw-bold">Missing</span>
+                                        {% endif %}
+                                    </li>
+                                    <li><strong>Sum of Line Items:</strong> <span class="text-success fw-bold">${{ error.line_items_sum|floatformat:2 }}</span></li>
+                                    <li><strong>Difference:</strong> <span class="text-danger fw-bold">${{ error.difference|floatformat:2 }}</span></li>
+                                </ul>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
                 </div>
                 {% else %}
                 <p class="text-muted text-center">No line items found for this bill.</p>
@@ -365,9 +414,9 @@
                         <tbody>
                             {% for item_data in line_items_with_rates %}
                             <tr>
-                                <td><code>{{ item_data.cpt_code|default:"N/A" }}</code></td>
-                                <td>{{ item_data.modifier|default:"N/A" }}</td>
-                                <td>{{ item_data.provider_tin|default:"N/A" }}</td>
+                                <td><code>{{ item_data.cpt_code|default:"-" }}</code></td>
+                                <td>{{ item_data.modifier|default:"-" }}</td>
+                                <td>{{ item_data.provider_tin|default:"-" }}</td>
                                 <td>
                                     {% if item_data.rate %}
                                         <span class="badge bg-success">${{ item_data.rate }}</span>
@@ -458,15 +507,15 @@
                 <div class="row">
                     <div class="col-md-6">
                         <p><strong>Order ID:</strong> <code>{{ order.order_id }}</code></p>
-                        <p><strong>Patient Name:</strong> {{ order.patient_name|default:"N/A" }}</p>
-                        <p><strong>Patient Phone:</strong> {{ order.patient_phone|default:"N/A" }}</p>
-                        <p><strong>Referring Physician:</strong> {{ order.referring_physician|default:"N/A" }}</p>
+                        <p><strong>Patient Name:</strong> {{ order.patient_name|default:"-" }}</p>
+                        <p><strong>Patient Phone:</strong> {{ order.patient_phone|default:"-" }}</p>
+                        <p><strong>Referring Physician:</strong> {{ order.referring_physician|default:"-" }}</p>
                     </div>
                     <div class="col-md-6">
-                        <p><strong>Assigning Company:</strong> {{ order.assigning_company|default:"N/A" }}</p>
-                        <p><strong>Claim Number:</strong> {{ order.claim_number|default:"N/A" }}</p>
-                        <p><strong>Order Type:</strong> {{ order.order_type|default:"N/A" }}</p>
-                        <p><strong>Jurisdiction State:</strong> {{ order.jurisdiction_state|default:"N/A" }}</p>
+                        <p><strong>Assigning Company:</strong> {{ order.assigning_company|default:"-" }}</p>
+                        <p><strong>Claim Number:</strong> {{ order.claim_number|default:"-" }}</p>
+                        <p><strong>Order Type:</strong> {{ order.order_type|default:"-" }}</p>
+                        <p><strong>Jurisdiction State:</strong> {{ order.jurisdiction_state|default:"-" }}</p>
                     </div>
                 </div>
                 
@@ -487,10 +536,10 @@
                         <tbody>
                             {% for item in order_line_items %}
                             <tr>
-                                <td><code>{{ item.cpt|default:"N/A" }}</code></td>
-                                <td>{{ item.description|default:"N/A" }}</td>
-                                <td>{{ item.charge|default:"N/A" }}</td>
-                                <td>{{ item.dos|default:"N/A" }}</td>
+                                <td><code>{{ item.cpt|default:"-" }}</code></td>
+                                <td>{{ item.description|default:"-" }}</td>
+                                <td>{{ item.charge|default:"-" }}</td>
+                                <td>{{ item.dos|default:"-" }}</td>
                                 <td>
                                     {% if item.id %}
                                     <a href="{% url 'billing:edit_order_line_item' bill.id item.id %}" 
@@ -576,13 +625,13 @@
                             {% for result in search_results %}
                             <tr>
                                 <td>
-                                    <strong>{{ result.patient_first_name|default:"N/A" }}</strong>
+                                    <strong>{{ result.patient_first_name|default:"-" }}</strong>
                                     {% if result.line_item_count > 1 %}
                                         <br><small class="text-muted">{{ result.line_item_count }} line items</small>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <strong>{{ result.patient_last_name|default:"N/A" }}</strong>
+                                    <strong>{{ result.patient_last_name|default:"-" }}</strong>
                                 </td>
                                 <td>
                                     <div class="d-flex flex-wrap gap-1">
@@ -703,6 +752,27 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.validation-highlight {
+    background-color: #fff3cd !important;
+    border-left: 4px solid #ffc107 !important;
+}
+
+.validation-error-highlight {
+    background-color: #f8d7da !important;
+    border-left: 4px solid #dc3545 !important;
+}
+
+.charge-mismatch {
+    background-color: #f8d7da !important;
+    border: 2px solid #dc3545 !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+}
+</style>
 {% endblock %}
 
 {% block extra_js %}

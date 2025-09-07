@@ -15,7 +15,7 @@ else
 fi
 
 # Download the database from remote server
-scp root@159.223.104.254:/srv/monolith/monolith.db ./monolith.db
+scp root@159.223.104.254:/srv/br-portal/monolith.db ./monolith.db
 
 if [ $? -eq 0 ]; then
     echo "Successfully downloaded monolith.db"

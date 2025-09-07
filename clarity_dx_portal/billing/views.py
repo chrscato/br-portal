@@ -16,6 +16,100 @@ from .models import ProviderBill, BillLineItem, Order, OrderLineItem, Provider, 
 from .s3_utils import s3_pdf_service
 
 
+def format_dos_date(dos_string):
+    """Format DOS date string to a consistent format"""
+    if not dos_string or dos_string.strip() == '':
+        return None
+    
+    dos_string = dos_string.strip()
+    
+    # Common date formats to try
+    date_formats = [
+        '%m/%d/%Y',  # MM/DD/YYYY
+        '%m/%d/%y',  # MM/DD/YY
+        '%Y-%m-%d',  # YYYY-MM-DD
+        '%m-%d-%Y',  # MM-DD-YYYY
+        '%m-%d-%y',  # MM-DD-YY
+        '%d/%m/%Y',  # DD/MM/YYYY
+        '%d/%m/%y',  # DD/MM/YY
+        '%d-%m-%Y',  # DD-MM-YYYY
+        '%d-%m-%y',  # DD-MM-YY
+    ]
+    
+    for fmt in date_formats:
+        try:
+            parsed_date = datetime.strptime(dos_string, fmt).date()
+            return parsed_date.strftime('%m/%d/%Y')  # Return in consistent format
+        except ValueError:
+            continue
+    
+    # If no format matches, return the original string
+    return dos_string
+
+
+def get_unique_dos_dates(line_items):
+    """Get unique, formatted DOS dates from line items"""
+    dos_dates = []
+    for line_item in line_items:
+        if line_item.dos:
+            formatted_date = format_dos_date(line_item.dos)
+            if formatted_date and formatted_date not in dos_dates:
+                dos_dates.append(formatted_date)
+    return dos_dates
+
+
+def add_date_search_to_query(order_query, dos_date):
+    """Add date search logic to order query"""
+    if dos_date:
+        try:
+            # Parse the input date - try multiple formats
+            target_date = None
+            input_formats = ['%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y', '%m-%d-%Y', '%m-%d-%y']
+            
+            for fmt in input_formats:
+                try:
+                    target_date = datetime.strptime(dos_date, fmt).date()
+                    break
+                except ValueError:
+                    continue
+            
+            if target_date:
+                # Calculate date range (60 days before and after)
+                start_date = target_date - timedelta(days=60)
+                end_date = target_date + timedelta(days=60)
+                
+                # Try different date formats that might be in the DOS field
+                date_formats = [
+                    '%m/%d/%y',  # MM/DD/YY
+                    '%m/%d/%Y',  # MM/DD/YYYY
+                    '%Y-%m-%d',  # YYYY-MM-DD
+                    '%m-%d-%y',  # MM-DD-YY
+                    '%m-%d-%Y',  # MM-DD-YYYY
+                ]
+                
+                # Build date range queries for different formats
+                date_queries = []
+                for fmt in date_formats:
+                    start_str = start_date.strftime(fmt)
+                    end_str = end_date.strftime(fmt)
+                    date_queries.append(
+                        Q(orderlineitem__dos__gte=start_str) & Q(orderlineitem__dos__lte=end_str)
+                    )
+                
+                # Combine all date format queries with OR
+                if date_queries:
+                    combined_date_query = date_queries[0]
+                    for query in date_queries[1:]:
+                        combined_date_query |= query
+                    order_query &= combined_date_query
+            
+        except ValueError:
+            # Invalid date format
+            pass
+    
+    return order_query
+
+
 def landing_page(request):
     """Landing page with login form"""
     if request.user.is_authenticated:
@@ -73,8 +167,18 @@ def validation_queue(request):
     """Validation queue - status = 'INVALID'"""
     bills = ProviderBill.objects.filter(status='INVALID').order_by('-created_at')
     
+    # Add validation errors to each bill
+    bills_with_errors = []
+    for bill in bills:
+        validation_errors = bill.get_validation_errors()
+        bills_with_errors.append({
+            'bill': bill,
+            'validation_errors': validation_errors
+        })
+    
     context = {
         'bills': bills,
+        'bills_with_errors': bills_with_errors,
         'queue_type': 'Validation',
         'status_filter': 'INVALID',
     }
@@ -111,43 +215,7 @@ def mapping_queue(request):
             # Search in patient last name with LIKE pattern
             order_query &= Q(patient_last_name__icontains=last_name)
         
-        if dos_date:
-            try:
-                # Parse the date
-                target_date = datetime.strptime(dos_date, '%Y-%m-%d').date()
-                
-                # Calculate date range (60 days before and after)
-                start_date = target_date - timedelta(days=60)
-                end_date = target_date + timedelta(days=60)
-                
-                # Try different date formats that might be in the DOS field
-                date_formats = [
-                    '%m/%d/%y',  # MM/DD/YY
-                    '%m/%d/%Y',  # MM/DD/YYYY
-                    '%Y-%m-%d',  # YYYY-MM-DD
-                    '%m-%d-%y',  # MM-DD-YY
-                    '%m-%d-%Y',  # MM-DD-YYYY
-                ]
-                
-                # Build date range queries for different formats
-                date_queries = []
-                for fmt in date_formats:
-                    start_str = start_date.strftime(fmt)
-                    end_str = end_date.strftime(fmt)
-                    date_queries.append(
-                        Q(orderlineitem__dos__gte=start_str) & Q(orderlineitem__dos__lte=end_str)
-                    )
-                
-                # Combine all date format queries with OR
-                if date_queries:
-                    combined_date_query = date_queries[0]
-                    for query in date_queries[1:]:
-                        combined_date_query |= query
-                    order_query &= combined_date_query
-                
-            except ValueError:
-                # Invalid date format
-                pass
+        order_query = add_date_search_to_query(order_query, dos_date)
         
         # Get matching orders with their line items
         if order_query:
@@ -173,7 +241,9 @@ def mapping_queue(request):
                         if line_item.description:
                             descriptions.append(line_item.description)
                         if line_item.dos:
-                            dos_dates.append(line_item.dos)
+                            formatted_date = format_dos_date(line_item.dos)
+                            if formatted_date and formatted_date not in dos_dates:
+                                dos_dates.append(formatted_date)
                     
                     # Get provider billing name
                     provider_billing_name = 'N/A'
@@ -188,12 +258,12 @@ def mapping_queue(request):
                     search_results.append({
                         'order': order,
                         'patient_name': patient_name,
-                        'patient_first_name': order.patient_first_name,
-                        'patient_last_name': order.patient_last_name,
+                            'patient_first_name': order.patient_last_name,
+                            'patient_last_name': order.patient_first_name,
                         'cpt_codes': ', '.join(cpt_codes) if cpt_codes else 'N/A',
                         'cpt_list': cpt_codes,  # For individual display if needed
                         'descriptions': ', '.join(descriptions) if descriptions else 'N/A',
-                        'dos': ', '.join(set(dos_dates)) if dos_dates else 'N/A',  # Remove duplicates
+                        'dos': ', '.join(dos_dates) if dos_dates else '-',  # Already unique and formatted
                         'order_id': order.order_id,
                         'line_item_count': line_items.count(),
                         'provider_billing_name': provider_billing_name,
@@ -328,9 +398,9 @@ def bill_detail(request, bill_id):
                 
                 for order in orders:
                     # Get line items for this order
-                    line_items = OrderLineItem.objects.filter(order=order)
+                    order_line_items_search = OrderLineItem.objects.filter(order=order)
                     
-                    if line_items.exists():
+                    if order_line_items_search.exists():
                         # Group line items by order and consolidate
                         patient_name = f"{order.patient_first_name or ''} {order.patient_last_name or ''}".strip()
                         
@@ -339,20 +409,22 @@ def bill_detail(request, bill_id):
                         descriptions = []
                         dos_dates = []
                         
-                        for line_item in line_items:
+                        for line_item in order_line_items_search:
                             if line_item.cpt:
                                 cpt_codes.append(line_item.cpt)
                             if line_item.description:
                                 descriptions.append(line_item.description)
                             if line_item.dos:
-                                dos_dates.append(line_item.dos)
+                                formatted_date = format_dos_date(line_item.dos)
+                                if formatted_date and formatted_date not in dos_dates:
+                                    dos_dates.append(formatted_date)
                         
                         # Get provider billing name
-                        provider_billing_name = 'N/A'
+                        provider_billing_name = '-'
                         if order.provider_id:
                             try:
                                 provider = Provider.objects.get(primary_key=order.provider_id)
-                                provider_billing_name = provider.name or 'N/A'
+                                provider_billing_name = provider.name or '-'
                             except Provider.DoesNotExist:
                                 pass
                         
@@ -360,12 +432,14 @@ def bill_detail(request, bill_id):
                         search_results.append({
                             'order': order,
                             'patient_name': patient_name,
-                            'cpt_codes': ', '.join(cpt_codes) if cpt_codes else 'N/A',
+                            'patient_first_name': order.patient_last_name,
+                            'patient_last_name': order.patient_first_name,
+                            'cpt_codes': ', '.join(cpt_codes) if cpt_codes else '-',
                             'cpt_list': cpt_codes,  # For individual display if needed
-                            'descriptions': ', '.join(descriptions) if descriptions else 'N/A',
-                            'dos': ', '.join(set(dos_dates)) if dos_dates else 'N/A',  # Remove duplicates
+                            'descriptions': ', '.join(descriptions) if descriptions else '-',
+                            'dos': ', '.join(dos_dates) if dos_dates else '-',  # Already unique and formatted
                             'order_id': order.order_id,
-                            'line_item_count': line_items.count(),
+                            'line_item_count': order_line_items_search.count(),
                             'provider_billing_name': provider_billing_name,
                         })
             
@@ -463,6 +537,9 @@ def bill_detail(request, bill_id):
             except Provider.DoesNotExist:
                 pass
         
+        # Get validation errors for this bill
+        validation_errors = bill.get_validation_errors()
+        
         context = {
             'bill': bill,
             'line_items': line_items,
@@ -475,6 +552,7 @@ def bill_detail(request, bill_id):
             'line_items_with_rates': line_items_with_rates,
             'total_rates': total_rates,
             'order_provider': order_provider,
+            'validation_errors': validation_errors,
         }
         
         return render(request, 'billing/bill_detail.html', context)
@@ -1125,43 +1203,7 @@ def order_search(request):
             # Search in patient last name with LIKE pattern
             order_query &= Q(patient_last_name__icontains=last_name)
         
-        if dos_date:
-            try:
-                # Parse the date
-                target_date = datetime.strptime(dos_date, '%Y-%m-%d').date()
-                
-                # Calculate date range (60 days before and after)
-                start_date = target_date - timedelta(days=60)
-                end_date = target_date + timedelta(days=60)
-                
-                # Try different date formats that might be in the DOS field
-                date_formats = [
-                    '%m/%d/%y',  # MM/DD/YY
-                    '%m/%d/%Y',  # MM/DD/YYYY
-                    '%Y-%m-%d',  # YYYY-MM-DD
-                    '%m-%d-%y',  # MM-DD-YY
-                    '%m-%d-%Y',  # MM-DD-YYYY
-                ]
-                
-                # Build date range queries for different formats
-                date_queries = []
-                for fmt in date_formats:
-                    start_str = start_date.strftime(fmt)
-                    end_str = end_date.strftime(fmt)
-                    date_queries.append(
-                        Q(orderlineitem__dos__gte=start_str) & Q(orderlineitem__dos__lte=end_str)
-                    )
-                
-                # Combine all date format queries with OR
-                if date_queries:
-                    combined_date_query = date_queries[0]
-                    for query in date_queries[1:]:
-                        combined_date_query |= query
-                    order_query &= combined_date_query
-                
-            except ValueError:
-                # Invalid date format
-                pass
+        order_query = add_date_search_to_query(order_query, dos_date)
         
         # Get matching orders
         if order_query:
@@ -1173,10 +1215,7 @@ def order_search(request):
                 line_items = OrderLineItem.objects.filter(order=order)
                 
                 # Collect all DOS dates from line items
-                dos_dates = []
-                for line_item in line_items:
-                    if line_item.dos:
-                        dos_dates.append(line_item.dos)
+                dos_dates = get_unique_dos_dates(line_items)
                 
                 # Check if there's an associated bill
                 associated_bill = ProviderBill.objects.filter(claim_id=order.order_id).first()
@@ -1188,9 +1227,9 @@ def order_search(request):
                 search_results.append({
                     'order': order,
                     'patient_name': f"{order.patient_first_name or ''} {order.patient_last_name or ''}".strip() or 'N/A',
-                    'patient_first_name': order.patient_first_name or '',
-                    'patient_last_name': order.patient_last_name or '',
-                    'dos': ', '.join(set(dos_dates)) if dos_dates else 'N/A',  # Remove duplicates
+                    'patient_first_name': order.patient_last_name or '',
+                    'patient_last_name': order.patient_first_name or '',
+                    'dos': ', '.join(dos_dates) if dos_dates else '-',  # Already unique and formatted
                     'order_id': order.order_id,
                     'line_item_count': line_items.count(),
                     'associated_bill': associated_bill,

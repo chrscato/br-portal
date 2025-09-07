@@ -9,7 +9,7 @@ timestamp=$(date +"%Y%m%d_%H%M%S")
 backup_path="./db_backups/vm_backups/monolith_vm_backup_${timestamp}.db"
 
 # Download current VM database as backup
-scp root@159.223.104.254:/srv/monolith/monolith.db "${backup_path}"
+scp root@159.223.104.254:/srv/br-portal/monolith.db "${backup_path}"
 
 if [ $? -eq 0 ]; then
     echo "VM backup created successfully: ${backup_path}"
@@ -25,7 +25,7 @@ fi
 
 # Upload the local database to remote server
 echo "Uploading local monolith.db to VM..."
-scp ./monolith.db root@159.223.104.254:/srv/monolith/monolith.db
+scp ./monolith.db root@159.223.104.254:/srv/br-portal/monolith.db
 
 if [ $? -eq 0 ]; then
     echo "Successfully uploaded monolith.db"

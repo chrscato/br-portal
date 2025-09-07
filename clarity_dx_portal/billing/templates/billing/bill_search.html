@@ -108,7 +108,7 @@
                                     {% if result.total_charge %}
                                         ${{ result.total_charge|floatformat:2 }}
                                     {% else %}
-                                        N/A
+                                        -
                                     {% endif %}
                                 </td>
                                 <td>{{ result.dos }}</td>
@@ -119,7 +119,7 @@
                                     {% if result.updated_at %}
                                         {{ result.updated_at|date:"M d, Y H:i" }}
                                     {% else %}
-                                        N/A
+                                        -
                                     {% endif %}
                                 </td>
                                 <td>

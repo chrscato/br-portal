@@ -37,19 +37,19 @@
                         <table class="table table-sm">
                             <tr>
                                 <td><strong>CPT Code:</strong></td>
-                                <td>{{ line_item.cpt_code|default:"N/A" }}</td>
+                                <td>{{ line_item.cpt_code|default:"-" }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Modifier:</strong></td>
-                                <td>{{ line_item.modifier|default:"N/A" }}</td>
+                                <td>{{ line_item.modifier|default:"-" }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Units:</strong></td>
-                                <td>{{ line_item.units|default:"N/A" }}</td>
+                                <td>{{ line_item.units|default:"-" }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Charge Amount:</strong></td>
-                                <td>{{ line_item.charge_amount|default:"N/A" }}</td>
+                                <td>{{ line_item.charge_amount|default:"-" }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Decision:</strong></td>
@@ -66,23 +66,23 @@
                         <table class="table table-sm">
                             <tr>
                                 <td><strong>Allowed Amount:</strong></td>
-                                <td>{{ line_item.allowed_amount|default:"N/A" }}</td>
+                                <td>{{ line_item.allowed_amount|default:"-" }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Reason Code:</strong></td>
-                                <td>{{ line_item.reason_code|default:"N/A" }}</td>
+                                <td>{{ line_item.reason_code|default:"-" }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Date of Service:</strong></td>
-                                <td>{{ line_item.date_of_service|default:"N/A" }}</td>
+                                <td>{{ line_item.date_of_service|default:"-" }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Place of Service:</strong></td>
-                                <td>{{ line_item.place_of_service|default:"N/A" }}</td>
+                                <td>{{ line_item.place_of_service|default:"-" }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Diagnosis Pointer:</strong></td>
-                                <td>{{ line_item.diagnosis_pointer|default:"N/A" }}</td>
+                                <td>{{ line_item.diagnosis_pointer|default:"-" }}</td>
                             </tr>
                         </table>
                     </div>

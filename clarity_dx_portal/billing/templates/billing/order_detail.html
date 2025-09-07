@@ -37,23 +37,23 @@
                 <div class="row">
                     <div class="col-md-6">
                         <p><strong>Order ID:</strong> <code>{{ order.order_id }}</code></p>
-                        <p><strong>Patient Name:</strong> {{ order.patient_name|default:"N/A" }}</p>
-                        <p><strong>Patient DOB:</strong> {{ order.patient_dob|default:"N/A" }}</p>
-                        <p><strong>Patient Phone:</strong> {{ order.patient_phone|default:"N/A" }}</p>
-                        <p><strong>Patient Address:</strong> {{ order.patient_address|default:"N/A" }}</p>
-                        <p><strong>Patient City:</strong> {{ order.patient_city|default:"N/A" }}</p>
-                        <p><strong>Patient State:</strong> {{ order.patient_state|default:"N/A" }}</p>
-                        <p><strong>Patient ZIP:</strong> {{ order.patient_zip|default:"N/A" }}</p>
+                        <p><strong>Patient Name:</strong> {{ order.patient_name|default:"-" }}</p>
+                        <p><strong>Patient DOB:</strong> {{ order.patient_dob|default:"-" }}</p>
+                        <p><strong>Patient Phone:</strong> {{ order.patient_phone|default:"-" }}</p>
+                        <p><strong>Patient Address:</strong> {{ order.patient_address|default:"-" }}</p>
+                        <p><strong>Patient City:</strong> {{ order.patient_city|default:"-" }}</p>
+                        <p><strong>Patient State:</strong> {{ order.patient_state|default:"-" }}</p>
+                        <p><strong>Patient ZIP:</strong> {{ order.patient_zip|default:"-" }}</p>
                     </div>
                     <div class="col-md-6">
-                        <p><strong>Referring Physician:</strong> {{ order.referring_physician|default:"N/A" }}</p>
-                        <p><strong>Referring Physician NPI:</strong> {{ order.referring_physician_npi|default:"N/A" }}</p>
-                        <p><strong>Assigning Company:</strong> {{ order.assigning_company|default:"N/A" }}</p>
-                        <p><strong>Assigning Adjuster:</strong> {{ order.assigning_adjuster|default:"N/A" }}</p>
-                        <p><strong>Claim Number:</strong> {{ order.claim_number|default:"N/A" }}</p>
-                        <p><strong>Order Type:</strong> {{ order.order_type|default:"N/A" }}</p>
-                        <p><strong>Jurisdiction State:</strong> {{ order.jurisdiction_state|default:"N/A" }}</p>
-                        <p><strong>Bundle Type:</strong> {{ order.bundle_type|default:"N/A" }}</p>
+                        <p><strong>Referring Physician:</strong> {{ order.referring_physician|default:"-" }}</p>
+                        <p><strong>Referring Physician NPI:</strong> {{ order.referring_physician_npi|default:"-" }}</p>
+                        <p><strong>Assigning Company:</strong> {{ order.assigning_company|default:"-" }}</p>
+                        <p><strong>Assigning Adjuster:</strong> {{ order.assigning_adjuster|default:"-" }}</p>
+                        <p><strong>Claim Number:</strong> {{ order.claim_number|default:"-" }}</p>
+                        <p><strong>Order Type:</strong> {{ order.order_type|default:"-" }}</p>
+                        <p><strong>Jurisdiction State:</strong> {{ order.jurisdiction_state|default:"-" }}</p>
+                        <p><strong>Bundle Type:</strong> {{ order.bundle_type|default:"-" }}</p>
                     </div>
                 </div>
             </div>
@@ -83,7 +83,7 @@
                                 {{ associated_bill.status }}
                             </span>
                         </p>
-                        <p><strong>Action:</strong> {{ associated_bill.action|default:"N/A" }}</p>
+                        <p><strong>Action:</strong> {{ associated_bill.action|default:"-" }}</p>
                         <p><strong>Bill Paid:</strong> 
                             <span class="badge bg-{% if associated_bill.bill_paid == 'Y' %}success{% elif associated_bill.bill_paid == 'N' %}danger{% else %}warning{% endif %}">
                                 {{ associated_bill.bill_paid|default:"Not Set" }}
@@ -98,9 +98,9 @@
                                 N/A
                             {% endif %}
                         </p>
-                        <p><strong>Provider:</strong> {{ associated_bill.billing_provider_name|default:"N/A" }}</p>
-                        <p><strong>Provider TIN:</strong> {{ associated_bill.billing_provider_tin|default:"N/A" }}</p>
-                        <p><strong>Provider NPI:</strong> {{ associated_bill.billing_provider_npi|default:"N/A" }}</p>
+                        <p><strong>Provider:</strong> {{ associated_bill.billing_provider_name|default:"-" }}</p>
+                        <p><strong>Provider TIN:</strong> {{ associated_bill.billing_provider_tin|default:"-" }}</p>
+                        <p><strong>Provider NPI:</strong> {{ associated_bill.billing_provider_npi|default:"-" }}</p>
                     </div>
                 </div>
             </div>
@@ -148,13 +148,13 @@
                         <tbody>
                             {% for item in order_line_items %}
                             <tr>
-                                <td><code>{{ item.cpt|default:"N/A" }}</code></td>
-                                <td>{{ item.modifier|default:"N/A" }}</td>
-                                <td>{{ item.units|default:"N/A" }}</td>
-                                <td>{{ item.description|default:"N/A" }}</td>
-                                <td>{{ item.charge|default:"N/A" }}</td>
-                                <td>{{ item.dos|default:"N/A" }}</td>
-                                <td>{{ item.line_number|default:"N/A" }}</td>
+                                <td><code>{{ item.cpt|default:"-" }}</code></td>
+                                <td>{{ item.modifier|default:"-" }}</td>
+                                <td>{{ item.units|default:"-" }}</td>
+                                <td>{{ item.description|default:"-" }}</td>
+                                <td>{{ item.charge|default:"-" }}</td>
+                                <td>{{ item.dos|default:"-" }}</td>
+                                <td>{{ item.line_number|default:"-" }}</td>
                                 <td>
                                     <span class="badge bg-{% if item.is_active == 'Y' %}success{% elif item.is_active == 'N' %}danger{% else %}warning{% endif %}">
                                         {{ item.is_active|default:"Not Set" }}
@@ -199,9 +199,9 @@
                         <tbody>
                             {% for item in bill_line_items %}
                             <tr>
-                                <td><code>{{ item.cpt_code|default:"N/A" }}</code></td>
-                                <td>{{ item.modifier|default:"N/A" }}</td>
-                                <td>{{ item.units|default:"N/A" }}</td>
+                                <td><code>{{ item.cpt_code|default:"-" }}</code></td>
+                                <td>{{ item.modifier|default:"-" }}</td>
+                                <td>{{ item.units|default:"-" }}</td>
                                 <td>
                                     {% if item.charge_amount %}
                                         ${{ item.charge_amount|floatformat:2 }}
@@ -221,8 +221,8 @@
                                         {{ item.decision|default:"Pending" }}
                                     </span>
                                 </td>
-                                <td>{{ item.date_of_service|default:"N/A" }}</td>
-                                <td>{{ item.place_of_service|default:"N/A" }}</td>
+                                <td>{{ item.date_of_service|default:"-" }}</td>
+                                <td>{{ item.place_of_service|default:"-" }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>

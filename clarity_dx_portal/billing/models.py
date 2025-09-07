@@ -67,6 +67,58 @@ class ProviderBill(models.Model):
     @property
     def is_unpaid(self):
         return self.bill_paid != 'Y'
+    
+    def get_validation_errors(self):
+        """Get validation errors for this bill"""
+        errors = []
+        
+        # Get line items sum
+        line_items = BillLineItem.objects.filter(provider_bill=self)
+        line_items_sum = sum(
+            float(item.charge_amount) for item in line_items 
+            if item.charge_amount is not None
+        )
+        
+        # Check if total charge is null or zero
+        if self.total_charge is None:
+            if line_items_sum > 0:
+                errors.append({
+                    'type': 'total_charge_missing',
+                    'message': f'Total charge is missing but line items sum to ${line_items_sum:.2f}',
+                    'total_charge': None,
+                    'line_items_sum': line_items_sum,
+                    'difference': line_items_sum
+                })
+        elif float(self.total_charge) == 0:
+            if line_items_sum > 0:
+                errors.append({
+                    'type': 'total_charge_zero',
+                    'message': f'Total charge is $0.00 but line items sum to ${line_items_sum:.2f}',
+                    'total_charge': 0.0,
+                    'line_items_sum': line_items_sum,
+                    'difference': line_items_sum
+                })
+        else:
+            # Check total charge vs sum of line items (existing logic)
+            # Allow for small rounding differences (within $0.01)
+            if abs(float(self.total_charge) - line_items_sum) > 0.01:
+                errors.append({
+                    'type': 'total_charge_mismatch',
+                    'message': f'Total charge (${self.total_charge:.2f}) does not match sum of line items (${line_items_sum:.2f})',
+                    'total_charge': float(self.total_charge),
+                    'line_items_sum': line_items_sum,
+                    'difference': abs(float(self.total_charge) - line_items_sum)
+                })
+        
+        return errors
+    
+    def get_line_items_sum(self):
+        """Get the sum of all line item charges for this bill"""
+        line_items = BillLineItem.objects.filter(provider_bill=self)
+        return sum(
+            float(item.charge_amount) for item in line_items 
+            if item.charge_amount is not None
+        )
 
 
 class BillLineItem(models.Model):
