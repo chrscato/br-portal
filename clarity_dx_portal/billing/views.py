@@ -142,11 +142,17 @@ def dashboard(request):
     paid_bills = ProviderBill.objects.filter(bill_paid='Y')
     paid_status_dist = list(paid_bills.values('status').annotate(count=Count('id')).order_by('-count'))
     
-    # Queue counts for the 4 core views
+    # Queue counts for the 5 core views
     validation_count = ProviderBill.objects.filter(status='INVALID').count()
     mapping_count = ProviderBill.objects.filter(status__in=['UNMAPPED', 'VALID']).count()
     correction_count = ProviderBill.objects.filter(status__in=['REVIEW_FLAG', 'FLAGGED']).count()
     rate_correction_count = ProviderBill.objects.filter(action__in=['review_rate', 'review_rates']).count()
+    ready_to_pay_count = ProviderBill.objects.filter(
+        status='REVIEWED',
+        action='apply_rate'
+    ).exclude(
+        bill_paid='Y'
+    ).count()
     
     context = {
         'unpaid_bills_count': unpaid_bills.count(),
@@ -157,6 +163,7 @@ def dashboard(request):
         'mapping_count': mapping_count,
         'correction_count': correction_count,
         'rate_correction_count': rate_correction_count,
+        'ready_to_pay_count': ready_to_pay_count,
     }
     
     return render(request, 'billing/dashboard.html', context)
@@ -274,8 +281,18 @@ def mapping_queue(request):
     page_number = request.GET.get('page')
     search_results_page = paginator.get_page(page_number)
     
+    # Add validation errors to each bill (same as validation queue)
+    bills_with_errors = []
+    for bill in bills:
+        validation_errors = bill.get_validation_errors()
+        bills_with_errors.append({
+            'bill': bill,
+            'validation_errors': validation_errors
+        })
+    
     context = {
         'bills': bills,
+        'bills_with_errors': bills_with_errors,
         'search_results': search_results_page,
         'queue_type': 'Mapping',
         'status_filter': 'UNMAPPED',
@@ -292,8 +309,18 @@ def correction_queue(request):
     """Correction queue - status in ('REVIEW_FLAG', 'FLAGGED')"""
     bills = ProviderBill.objects.filter(status__in=['REVIEW_FLAG', 'FLAGGED']).order_by('-created_at')
     
+    # Add validation errors to each bill (same as validation queue)
+    bills_with_errors = []
+    for bill in bills:
+        validation_errors = bill.get_validation_errors()
+        bills_with_errors.append({
+            'bill': bill,
+            'validation_errors': validation_errors
+        })
+    
     context = {
         'bills': bills,
+        'bills_with_errors': bills_with_errors,
         'queue_type': 'Correction',
         'status_filter': 'REVIEW_FLAG,FLAGGED',
     }
@@ -306,10 +333,51 @@ def rate_correction_queue(request):
     """Rate Correction queue - action in ('review_rate', 'review_rates')"""
     bills = ProviderBill.objects.filter(action__in=['review_rate', 'review_rates']).order_by('-created_at')
     
+    # Add validation errors to each bill (same as validation queue)
+    bills_with_errors = []
+    for bill in bills:
+        validation_errors = bill.get_validation_errors()
+        bills_with_errors.append({
+            'bill': bill,
+            'validation_errors': validation_errors
+        })
+    
     context = {
         'bills': bills,
+        'bills_with_errors': bills_with_errors,
         'queue_type': 'Rate Correction',
         'status_filter': 'review_rate,review_rates',
+    }
+    
+    return render(request, 'billing/queue.html', context)
+
+
+@login_required
+def ready_to_pay_queue(request):
+    """Ready to Pay queue - status = 'REVIEWED', action = 'apply_rate', bill_paid != 'Y'"""
+    bills = ProviderBill.objects.filter(
+        status='REVIEWED',
+        action='apply_rate'
+    ).exclude(
+        bill_paid='Y'
+    ).order_by('-created_at')
+    
+    # Add validation errors to each bill (same as other queues)
+    bills_with_errors = []
+    for bill in bills:
+        validation_errors = bill.get_validation_errors()
+        bills_with_errors.append({
+            'bill': bill,
+            'validation_errors': validation_errors
+        })
+    
+    context = {
+        'bills': bills,
+        'bills_with_errors': bills_with_errors,
+        'queue_type': 'Ready to Pay',
+        'status_filter': 'REVIEWED',
+        'action_filter': 'apply_rate',
+        'payment_status': 'unpaid',
     }
     
     return render(request, 'billing/queue.html', context)
@@ -1113,6 +1181,31 @@ def add_manual_rate(request, bill_id):
             return redirect('billing:bill_detail', bill_id=bill_id)
     
     return redirect('billing:bill_detail', bill_id=bill_id)
+
+
+@login_required
+def mark_bill_paid(request, bill_id):
+    """Mark a bill as paid"""
+    if request.method == 'POST':
+        try:
+            bill = ProviderBill.objects.get(id=bill_id)
+            
+            # Update bill_paid to 'Y'
+            bill.bill_paid = 'Y'
+            bill.updated_at = datetime.now()
+            bill.save()
+            
+            messages.success(request, f'Bill {bill_id} has been marked as paid.')
+            return redirect('billing:ready_to_pay_queue')
+            
+        except ProviderBill.DoesNotExist:
+            messages.error(request, 'Bill not found.')
+            return redirect('billing:dashboard')
+        except Exception as e:
+            messages.error(request, f'Error marking bill as paid: {str(e)}')
+            return redirect('billing:ready_to_pay_queue')
+    
+    return redirect('billing:ready_to_pay_queue')
 
 
 @login_required

@@ -7,7 +7,7 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h2><i class="fas fa-{% if queue_type == 'Validation' %}search{% elif queue_type == 'Mapping' %}map-marker-alt{% else %}flag{% endif %}"></i> {{ queue_type }} Queue</h2>
+                <h2><i class="fas fa-{% if queue_type == 'Validation' %}search{% elif queue_type == 'Mapping' %}map-marker-alt{% elif queue_type == 'Ready to Pay' %}credit-card{% else %}flag{% endif %}"></i> {{ queue_type }} Queue</h2>
                 <p class="text-muted">Process bills with status: {{ status_filter }}</p>
             </div>
             <div>
@@ -18,6 +18,82 @@
         </div>
     </div>
 </div>
+
+<!-- Instructions Panel -->
+{% if queue_type == 'Validation' %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for {{ queue_type }} Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2"><strong>These bills are not mapped yet. We need the following information:</strong></p>
+                <ul class="mb-2">
+                    <li>Accurate patient name</li>
+                    <li>Line items</li>
+                    <li>Total charge</li>
+                    <li>Patient account no.</li>
+                </ul>
+                <p class="mb-0"><strong>Once complete please click "Validate"</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif queue_type == 'Mapping' %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for {{ queue_type }} Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2"><strong>Please reference the mapping search function at the bottom here and map this bill to the correct order found in FileMaker.</strong></p>
+                <p class="mb-0"><strong>Use last name, first name, line item DOS and match it to the correct FileMaker order that reconciles with DOS, CPT, and listed provider.</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif queue_type == 'Correction' %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for {{ queue_type }} Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0"><strong>Please address the last error message and correct the bill.</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif queue_type == 'Rate Correction' %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for {{ queue_type }} Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0"><strong>Please apply rate and correct each line item.</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif queue_type == 'Ready to Pay' %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for {{ queue_type }} Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0"><strong>These are the bills that are set to be paid in the next QuickBooks batch.</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <div class="row mb-3">
     <div class="col-12">
@@ -108,6 +184,16 @@
                     <strong>Action Required:</strong>
                     <span class="badge bg-info">{{ bill.action|title }}</span>
                 </div>
+                {% if queue_type == 'Ready to Pay' %}
+                <div class="mb-2">
+                    <strong>Payment Status:</strong>
+                    <span class="badge bg-warning">Unpaid</span>
+                </div>
+                <div class="mb-2">
+                    <strong>Ready for Payment:</strong>
+                    <span class="badge bg-success">Yes</span>
+                </div>
+                {% endif %}
                 <div class="mb-3">
                     <strong>Updated:</strong>
                     {% if bill.updated_at %}
@@ -137,6 +223,10 @@
                     {% elif queue_type == 'Rate Correction' %}
                     <button class="btn btn-success btn-sm" onclick="reviewRate('{{ bill.id }}')">
                         <i class="fas fa-dollar-sign"></i> Review Rate
+                    </button>
+                    {% elif queue_type == 'Ready to Pay' %}
+                    <button class="btn btn-primary btn-sm" onclick="markAsPaid('{{ bill.id }}')">
+                        <i class="fas fa-credit-card"></i> Mark as Paid
                     </button>
                     {% endif %}
                 </div>
@@ -260,6 +350,27 @@ function reviewRate(billId) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '{% url "billing:review_rate" "PLACEHOLDER" %}'.replace('PLACEHOLDER', billId);
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function markAsPaid(billId) {
+    if (confirm('Are you sure you want to mark this bill as paid? This will change bill_paid to Y and remove it from the Ready to Pay queue.')) {
+        // Create a form to submit the payment
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "billing:mark_bill_paid" "PLACEHOLDER" %}'.replace('PLACEHOLDER', billId);
         
         // Add CSRF token
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;

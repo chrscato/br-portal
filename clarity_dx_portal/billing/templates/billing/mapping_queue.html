@@ -19,6 +19,21 @@
     </div>
 </div>
 
+<!-- Instructions Panel -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for Mapping Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2"><strong>Please reference the mapping search function at the bottom here and map this bill to the correct order found in FileMaker.</strong></p>
+                <p class="mb-0"><strong>Use last name, first name, line item DOS and match it to the correct FileMaker order that reconciles with DOS, CPT, and listed provider.</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Search Form -->
 <div class="row mb-4">
     <div class="col-12">
@@ -69,50 +84,103 @@
             </div>
             <div class="card-body">
                 {% if bills %}
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Bill ID</th>
-                                <th>Patient Name</th>
-                                <th>Provider</th>
-                                <th>Total Charge</th>
-                                <th>Created</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for bill in bills %}
-                            <tr>
-                                <td><code>{{ bill.id }}</code></td>
-                                <td>{{ bill.patient_name|default:"-" }}</td>
-                                <td>{{ bill.billing_provider_name|default:"-" }}</td>
-                                <td>
-                                    {% if bill.total_charge %}
-                                        ${{ bill.total_charge|floatformat:2 }}
-                                    {% else %}
-                                        N/A
+                <div class="row">
+                    {% for bill_data in bills_with_errors %}
+                        {% with bill=bill_data.bill validation_errors=bill_data.validation_errors %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 {% if validation_errors %}border-danger{% endif %}">
+                            <div class="card-header d-flex justify-content-between align-items-center {% if validation_errors %}bg-danger text-white{% endif %}">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-file-invoice"></i> {{ bill.id }}
+                                    {% if validation_errors %}
+                                        <i class="fas fa-exclamation-triangle ms-2"></i>
                                     {% endif %}
-                                </td>
-                                <td>
-                                    {% if bill.created_at %}
-                                        {{ bill.created_at|date:"M d, Y" }}
+                                </h6>
+                                <span class="badge status-badge bg-{% if bill.status == 'ESCALATE' %}danger{% elif bill.status == 'MAPPED' %}warning{% elif bill.status == 'REVIEWED' %}success{% elif bill.status == 'VALID' %}info{% elif bill.status == 'INVALID' %}danger{% else %}secondary{% endif %}">
+                                    {{ bill.status }}
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <strong>Patient:</strong> {{ bill.patient_name|default:"-" }}
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Provider:</strong> {{ bill.billing_provider_name|default:"-" }}
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Total Charge:</strong> 
+                                    <span class="{% for error in validation_errors %}{% if error.type in 'total_charge_mismatch,total_charge_missing,total_charge_zero' %}charge-mismatch{% endif %}{% endfor %}">
+                                        {% if bill.total_charge %}
+                                            ${{ bill.total_charge|floatformat:2 }}
+                                        {% else %}
+                                            <span class="text-muted">Missing</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                
+                                <!-- Validation Errors Display -->
+                                {% if validation_errors %}
+                                <div class="mb-2">
+                                    <strong class="text-danger">Validation Issues:</strong>
+                                    {% for error in validation_errors %}
+                                        <div class="alert alert-danger alert-sm py-1 px-2 mb-1">
+                                            <small>
+                                                <i class="fas fa-exclamation-circle"></i>
+                                                {% if error.type == 'total_charge_mismatch' %}
+                                                    Total charge mismatch: ${{ error.total_charge|floatformat:2 }} vs ${{ error.line_items_sum|floatformat:2 }} (diff: ${{ error.difference|floatformat:2 }})
+                                                {% elif error.type == 'total_charge_missing' %}
+                                                    Total charge missing but line items sum to ${{ error.line_items_sum|floatformat:2 }}
+                                                {% elif error.type == 'total_charge_zero' %}
+                                                    Total charge is $0.00 but line items sum to ${{ error.line_items_sum|floatformat:2 }}
+                                                {% else %}
+                                                    {{ error.message }}
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                
+                                {% if bill.last_error %}
+                                <div class="mb-2">
+                                    <strong>Last Error:</strong>
+                                    <small class="text-danger">{{ bill.last_error|truncatechars:50 }}</small>
+                                </div>
+                                {% endif %}
+                                <div class="mb-2">
+                                    <strong>Action Required:</strong>
+                                    <span class="badge bg-info">{{ bill.action|title }}</span>
+                                </div>
+                                <div class="mb-3">
+                                    <strong>Updated:</strong>
+                                    {% if bill.updated_at %}
+                                        {{ bill.updated_at|date:"M d, Y H:i" }}
                                     {% else %}
-                                        N/A
+                                        -
                                     {% endif %}
-                                </td>
-                                <td>
-                                    <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-eye"></i> View
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <div class="d-grid gap-2">
+                                    <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-eye"></i> View Details
                                     </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                                    <button class="btn btn-info btn-sm" onclick="mapBill('{{ bill.id }}')">
+                                        <i class="fas fa-map-marker-alt"></i> Map Provider
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                        {% endwith %}
+                    {% endfor %}
                 </div>
                 {% else %}
-                <p class="text-muted text-center">No unmapped bills found.</p>
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No unmapped bills found</h4>
+                    <p class="text-muted">All bills have been mapped or no bills match the current criteria.</p>
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -297,6 +365,27 @@
 </div>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+.validation-highlight {
+    background-color: #fff3cd !important;
+    border-left: 4px solid #ffc107 !important;
+}
+
+.validation-error-highlight {
+    background-color: #f8d7da !important;
+    border-left: 4px solid #dc3545 !important;
+}
+
+.charge-mismatch {
+    background-color: #f8d7da !important;
+    border: 2px solid #dc3545 !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+}
+</style>
+{% endblock %}
+
 {% block extra_js %}
 <script>
 function showMapModal(orderId, patientName, cpt, dos) {
@@ -313,6 +402,11 @@ function showMapModal(orderId, patientName, cpt, dos) {
     // Show modal
     var modal = new bootstrap.Modal(document.getElementById('mapBillModal'));
     modal.show();
+}
+
+function mapBill(billId) {
+    // TODO: Implement mapping logic
+    alert('Mapping functionality will be implemented for bill: ' + billId);
 }
 </script>
 {% endblock %}

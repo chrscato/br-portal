@@ -14,6 +14,7 @@ urlpatterns = [
     path('mapping/', views.mapping_queue, name='mapping_queue'),
     path('correction/', views.correction_queue, name='correction_queue'),
     path('rate-correction/', views.rate_correction_queue, name='rate_correction_queue'),
+    path('ready-to-pay/', views.ready_to_pay_queue, name='ready_to_pay_queue'),
     path('bill/<str:bill_id>/', views.bill_detail, name='bill_detail'),
     path('bill/<str:bill_id>/pdf/', views.bill_pdf, name='bill_pdf'),
     path('map-bill/', views.map_bill, name='map_bill'),
@@ -34,6 +35,7 @@ urlpatterns = [
     path('bill/<str:bill_id>/review-rate/', views.review_rate, name='review_rate'),
     path('bill/<str:bill_id>/apply-rates/', views.apply_rates, name='apply_rates'),
     path('bill/<str:bill_id>/add-manual-rate/', views.add_manual_rate, name='add_manual_rate'),
+    path('bill/<str:bill_id>/mark-paid/', views.mark_bill_paid, name='mark_bill_paid'),
     
     # Bill line item management
     path('bill/<str:bill_id>/add-line-item/', views.add_bill_line_item, name='add_bill_line_item'),

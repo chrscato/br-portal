@@ -20,6 +20,82 @@
     </div>
 </div>
 
+<!-- Queue-Specific Instructions -->
+{% if bill.status == 'INVALID' %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for Validation Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2"><strong>These bills are not mapped yet. We need the following information:</strong></p>
+                <ul class="mb-2">
+                    <li>Accurate patient name</li>
+                    <li>Line items</li>
+                    <li>Total charge</li>
+                    <li>Patient account no.</li>
+                </ul>
+                <p class="mb-0"><strong>Once complete please click "Validate"</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif bill.status in 'UNMAPPED,VALID' %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for Mapping Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-2"><strong>Please reference the mapping search function at the bottom here and map this bill to the correct order found in FileMaker.</strong></p>
+                <p class="mb-0"><strong>Use last name, first name, line item DOS and match it to the correct FileMaker order that reconciles with DOS, CPT, and listed provider.</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif bill.status in 'REVIEW_FLAG,FLAGGED' %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for Correction Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0"><strong>Please address the last error message and correct the bill.</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif bill.action in 'review_rate,review_rates' %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for Rate Correction Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0"><strong>Please apply rate and correct each line item.</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% elif bill.status == 'REVIEWED' and bill.action == 'apply_rate' and bill.bill_paid != 'Y' %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for Ready to Pay Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0"><strong>These are the bills that are set to be paid in the next QuickBooks batch.</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Queue Navigation -->
 <div class="row mb-4">
     <div class="col-12">
@@ -170,10 +246,10 @@
 <!-- Patient Information -->
 <div class="row mb-4">
     <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
+        <div class="card {% if bill.status == 'INVALID' %}highlight-validation-section{% endif %}">
+            <div class="card-header {% if bill.status == 'INVALID' %}bg-warning text-dark{% endif %}">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-user"></i> Patient Information</h5>
+                    <h5 class="mb-0"><i class="fas fa-user"></i> Patient Information {% if bill.status == 'INVALID' %}<i class="fas fa-exclamation-triangle ms-2"></i>{% endif %}</h5>
                     <a href="{% url 'billing:edit_patient_info' bill.id %}" 
                        class="btn btn-outline-warning btn-sm">
                         <i class="fas fa-edit"></i> Edit
@@ -190,10 +266,10 @@
     </div>
     
     <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
+        <div class="card {% if bill.status == 'INVALID' %}highlight-validation-section{% endif %}">
+            <div class="card-header {% if bill.status == 'INVALID' %}bg-warning text-dark{% endif %}">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-hospital"></i> Provider Information</h5>
+                    <h5 class="mb-0"><i class="fas fa-hospital"></i> Provider Information {% if bill.status == 'INVALID' %}<i class="fas fa-exclamation-triangle ms-2"></i>{% endif %}</h5>
                     <a href="{% url 'billing:edit_provider_info' bill.id %}" 
                        class="btn btn-outline-warning btn-sm">
                         <i class="fas fa-edit"></i> Edit
@@ -278,10 +354,10 @@
 <!-- Bill Line Items -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
+        <div class="card {% if bill.status == 'INVALID' %}highlight-validation-section{% endif %}">
+            <div class="card-header {% if bill.status == 'INVALID' %}bg-warning text-dark{% endif %}">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-list"></i> Bill Line Items</h5>
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Bill Line Items {% if bill.status == 'INVALID' %}<i class="fas fa-exclamation-triangle ms-2"></i>{% endif %}</h5>
                     <a href="{% url 'billing:add_bill_line_item' bill.id %}" class="btn btn-success btn-sm">
                         <i class="fas fa-plus"></i> Add Line Item
                     </a>
@@ -566,10 +642,10 @@
 {% if bill.status == 'UNMAPPED' or bill.status == 'VALID' %}
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
+        <div class="card highlight-mapping-section">
+            <div class="card-header bg-info text-white">
                 <h5 class="mb-0">
-                    <i class="fas fa-map-marker-alt"></i> Map Bill to Order
+                    <i class="fas fa-map-marker-alt"></i> Map Bill to Order <i class="fas fa-exclamation-triangle ms-2"></i>
                     <button class="btn btn-sm btn-outline-primary float-end" type="button" data-bs-toggle="collapse" data-bs-target="#mappingSection" aria-expanded="true" aria-controls="mappingSection">
                         <i class="fas fa-search"></i> Search Orders
                     </button>
@@ -771,6 +847,31 @@
     border: 2px solid #dc3545 !important;
     border-radius: 4px !important;
     padding: 2px 6px !important;
+}
+
+/* Queue-specific highlighting */
+.highlight-validation-section {
+    border: 3px solid #ffc107 !important;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.3) !important;
+    animation: pulse-warning 2s infinite;
+}
+
+.highlight-mapping-section {
+    border: 3px solid #0dcaf0 !important;
+    box-shadow: 0 0 10px rgba(13, 202, 240, 0.3) !important;
+    animation: pulse-info 2s infinite;
+}
+
+@keyframes pulse-warning {
+    0% { box-shadow: 0 0 10px rgba(255, 193, 7, 0.3); }
+    50% { box-shadow: 0 0 20px rgba(255, 193, 7, 0.6); }
+    100% { box-shadow: 0 0 10px rgba(255, 193, 7, 0.3); }
+}
+
+@keyframes pulse-info {
+    0% { box-shadow: 0 0 10px rgba(13, 202, 240, 0.3); }
+    50% { box-shadow: 0 0 20px rgba(13, 202, 240, 0.6); }
+    100% { box-shadow: 0 0 10px rgba(13, 202, 240, 0.3); }
 }
 </style>
 {% endblock %}
