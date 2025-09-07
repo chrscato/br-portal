@@ -24,7 +24,8 @@ else
 fi
 
 git commit -m "$commit_message" || echo "📝 Nothing to commit"
-git push origin main
+CURRENT_BRANCH=$(git branch --show-current)
+git push origin $CURRENT_BRANCH
 
 # === STEP 2: SSH into VM, pull latest, restart app ===
 echo "🔗 Connecting to $REMOTE_HOST and deploying..."
@@ -48,7 +49,8 @@ ssh $REMOTE_USER@$REMOTE_HOST << EOF
   fi
   
   git reset --hard HEAD
-  if ! git pull origin main; then
+  CURRENT_BRANCH=\$(git branch --show-current)
+  if ! git pull origin \$CURRENT_BRANCH; then
     echo "⚠️  Git pull failed - continuing with existing code..."
     echo "💡 Tip: Set up SSH keys or configure Git credentials on the server"
   fi
