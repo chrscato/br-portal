@@ -1209,6 +1209,62 @@ def mark_bill_paid(request, bill_id):
 
 
 @login_required
+def approve_for_rate(request, bill_id):
+    """Approve bill for rate - set status to REVIEWED and action to null"""
+    if request.method == 'POST':
+        try:
+            bill = ProviderBill.objects.get(id=bill_id)
+            
+            # Update bill status and action
+            bill.status = 'REVIEWED'
+            bill.action = None  # Set to null
+            bill.updated_at = datetime.now()
+            bill.save()
+            
+            messages.success(request, f'Bill {bill_id} has been approved for rate.')
+            return redirect('billing:bill_detail', bill_id=bill_id)
+            
+        except ProviderBill.DoesNotExist:
+            messages.error(request, 'Bill not found.')
+            return redirect('billing:dashboard')
+        except Exception as e:
+            messages.error(request, f'Error approving bill for rate: {str(e)}')
+            return redirect('billing:bill_detail', bill_id=bill_id)
+    
+    return redirect('billing:bill_detail', bill_id=bill_id)
+
+
+@login_required
+def approve_for_payment(request, bill_id):
+    """Approve bill for payment - set status to REVIEWED, action to apply_rate, and all line item decisions to APPROVED"""
+    if request.method == 'POST':
+        try:
+            bill = ProviderBill.objects.get(id=bill_id)
+            
+            # Update bill status and action
+            bill.status = 'REVIEWED'
+            bill.action = 'apply_rate'
+            bill.updated_at = datetime.now()
+            bill.save()
+            
+            # Update all line item decisions to APPROVED
+            line_items = BillLineItem.objects.filter(provider_bill=bill)
+            updated_count = line_items.update(decision='APPROVED')
+            
+            messages.success(request, f'Bill {bill_id} has been approved for payment. Updated {updated_count} line items to APPROVED.')
+            return redirect('billing:bill_detail', bill_id=bill_id)
+            
+        except ProviderBill.DoesNotExist:
+            messages.error(request, 'Bill not found.')
+            return redirect('billing:dashboard')
+        except Exception as e:
+            messages.error(request, f'Error approving bill for payment: {str(e)}')
+            return redirect('billing:bill_detail', bill_id=bill_id)
+    
+    return redirect('billing:bill_detail', bill_id=bill_id)
+
+
+@login_required
 def add_bill_line_item(request, bill_id):
     """Add a new bill line item"""
     try:

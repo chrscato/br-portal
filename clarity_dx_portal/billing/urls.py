@@ -36,6 +36,8 @@ urlpatterns = [
     path('bill/<str:bill_id>/apply-rates/', views.apply_rates, name='apply_rates'),
     path('bill/<str:bill_id>/add-manual-rate/', views.add_manual_rate, name='add_manual_rate'),
     path('bill/<str:bill_id>/mark-paid/', views.mark_bill_paid, name='mark_bill_paid'),
+    path('bill/<str:bill_id>/approve-for-rate/', views.approve_for_rate, name='approve_for_rate'),
+    path('bill/<str:bill_id>/approve-for-payment/', views.approve_for_payment, name='approve_for_payment'),
     
     # Bill line item management
     path('bill/<str:bill_id>/add-line-item/', views.add_bill_line_item, name='add_bill_line_item'),

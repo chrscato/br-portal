@@ -817,6 +817,14 @@
                     </button>
                     {% endif %}
                     
+                    <!-- Approve Buttons -->
+                    <button class="btn btn-success" onclick="approveForRate('{{ bill.id }}')">
+                        <i class="fas fa-check-circle"></i> Approve for Rate
+                    </button>
+                    <button class="btn btn-primary" onclick="approveForPayment('{{ bill.id }}')">
+                        <i class="fas fa-credit-card"></i> Approve for Payment
+                    </button>
+                    
                     <button class="btn btn-primary" onclick="updateStatus('{{ bill.id }}')">
                         <i class="fas fa-sync-alt"></i> Update Status
                     </button>
@@ -1044,6 +1052,48 @@ function addManualRate(lineItemId, rate) {
     // Submit the form
     document.body.appendChild(form);
     form.submit();
+}
+
+function approveForRate(billId) {
+    if (confirm('Are you sure you want to approve this bill for rate? This will change the status to REVIEWED and action to null.')) {
+        // Create a form to submit the approval
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "billing:approve_for_rate" "PLACEHOLDER" %}'.replace('PLACEHOLDER', billId);
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function approveForPayment(billId) {
+    if (confirm('Are you sure you want to approve this bill for payment? This will change the status to REVIEWED, action to apply_rate, and set all line item decisions to APPROVED.')) {
+        // Create a form to submit the approval
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "billing:approve_for_payment" "PLACEHOLDER" %}'.replace('PLACEHOLDER', billId);
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
+    }
 }
 </script>
 {% endblock %}
