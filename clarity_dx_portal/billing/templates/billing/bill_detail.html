@@ -416,11 +416,12 @@
                                            class="btn btn-outline-warning btn-sm">
                                             <i class="fas fa-edit"></i> Edit
                                         </a>
-                                        <a href="{% url 'billing:delete_bill_line_item' bill.id item.id %}" 
-                                           class="btn btn-outline-danger btn-sm"
-                                           onclick="return confirm('Are you sure you want to delete this line item? This action cannot be undone.');">
-                                            <i class="fas fa-trash"></i> Delete
-                                        </a>
+                                        <form method="post" action="{% url 'billing:delete_bill_line_item' bill.id item.id %}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this line item? This action cannot be undone.');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </button>
+                                        </form>
                                     </div>
                                     {% else %}
                                     <span class="text-muted">No ID</span>

@@ -1247,24 +1247,21 @@ def add_bill_line_item(request, bill_id):
 @login_required
 def delete_bill_line_item(request, bill_id, line_item_id):
     """Delete a bill line item"""
-    try:
-        bill = ProviderBill.objects.get(id=bill_id)
-        line_item = BillLineItem.objects.get(id=line_item_id, provider_bill=bill)
-        
-        if request.method == 'POST':
+    if request.method == 'POST':
+        try:
+            bill = ProviderBill.objects.get(id=bill_id)
+            line_item = BillLineItem.objects.get(id=line_item_id, provider_bill=bill)
+            
             line_item.delete()
             messages.success(request, 'Bill line item deleted successfully.')
             return redirect('billing:bill_detail', bill_id=bill_id)
-        
-        context = {
-            'bill': bill,
-            'line_item': line_item,
-        }
-        return render(request, 'billing/delete_bill_line_item.html', context)
-        
-    except (ProviderBill.DoesNotExist, BillLineItem.DoesNotExist):
-        messages.error(request, 'Bill or line item not found.')
-        return redirect('billing:dashboard')
+            
+        except (ProviderBill.DoesNotExist, BillLineItem.DoesNotExist):
+            messages.error(request, 'Bill or line item not found.')
+            return redirect('billing:dashboard')
+    
+    # If not POST, redirect back to bill detail
+    return redirect('billing:bill_detail', bill_id=bill_id)
 
 
 @login_required
