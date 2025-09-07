@@ -48,11 +48,19 @@ ssh $REMOTE_USER@$REMOTE_HOST << EOF
     ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null || true
   fi
   
+  # Configure git to handle divergent branches by merging
+  git config pull.rebase false
+  
+  # Reset to clean state and pull latest changes
   git reset --hard HEAD
   CURRENT_BRANCH=\$(git branch --show-current)
-  if ! git pull origin \$CURRENT_BRANCH; then
-    echo "⚠️  Git pull failed - continuing with existing code..."
-    echo "💡 Tip: Set up SSH keys or configure Git credentials on the server"
+  
+  # Force pull to overwrite local changes with remote
+  if ! git pull origin \$CURRENT_BRANCH --force; then
+    echo "⚠️  Git pull failed - trying alternative approach..."
+    # If pull fails, reset to remote branch
+    git fetch origin \$CURRENT_BRANCH
+    git reset --hard origin/\$CURRENT_BRANCH
   fi
   
   # Update dependencies with uv if requirements.txt changed
