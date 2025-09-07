@@ -1,0 +1,165 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Edit Order Line Item - Bill {{ bill.id }} - Clarity Dx Bill Review Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-list-edit"></i> Edit Order Line Item</h2>
+                <p class="text-muted">Edit order line item details for Bill {{ bill.id }}</p>
+            </div>
+            <div>
+                <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Bill Detail
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Order Line Item Information</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id" class="form-label">Line Item ID</label>
+                                <input type="text" class="form-control" id="id" name="id" 
+                                       value="{{ line_item.id }}" readonly>
+                                <small class="form-text text-muted">Line Item ID cannot be changed</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="cpt" class="form-label">CPT</label>
+                                <input type="text" class="form-control" id="cpt" name="cpt" 
+                                       value="{{ line_item.cpt|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="modifier" class="form-label">Modifier</label>
+                                <input type="text" class="form-control" id="modifier" name="modifier" 
+                                       value="{{ line_item.modifier|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="units" class="form-label">Units</label>
+                                <input type="text" class="form-control" id="units" name="units" 
+                                       value="{{ line_item.units|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="charge" class="form-label">Charge</label>
+                                <input type="text" class="form-control" id="charge" name="charge" 
+                                       value="{{ line_item.charge|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="line_number" class="form-label">Line Number</label>
+                                <input type="text" class="form-control" id="line_number" name="line_number" 
+                                       value="{{ line_item.line_number|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="is_active" class="form-label">Is Active</label>
+                                <select class="form-select" id="is_active" name="is_active">
+                                    <option value="Y" {% if line_item.is_active == 'Y' %}selected{% endif %}>Yes</option>
+                                    <option value="N" {% if line_item.is_active == 'N' %}selected{% endif %}>No</option>
+                                    <option value="" {% if not line_item.is_active %}selected{% endif %}>Not Set</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="br_paid" class="form-label">BR Paid</label>
+                                <input type="text" class="form-control" id="br_paid" name="br_paid" 
+                                       value="{{ line_item.br_paid|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="br_rate" class="form-label">BR Rate</label>
+                                <input type="text" class="form-control" id="br_rate" name="br_rate" 
+                                       value="{{ line_item.br_rate|default:'' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea class="form-control" id="description" name="description" 
+                                          rows="3">{{ line_item.description|default:'' }}</textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="dos" class="form-label">Date of Service</label>
+                                <input type="text" class="form-control" id="dos" name="dos" 
+                                       value="{{ line_item.dos|default:'' }}" placeholder="MM/DD/YYYY">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="eobr_doc_no" class="form-label">EOBR Document Number</label>
+                                <input type="text" class="form-control" id="eobr_doc_no" name="eobr_doc_no" 
+                                       value="{{ line_item.eobr_doc_no|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="hcfa_doc_no" class="form-label">HCFA Document Number</label>
+                                <input type="text" class="form-control" id="hcfa_doc_no" name="hcfa_doc_no" 
+                                       value="{{ line_item.hcfa_doc_no|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="br_date_processed" class="form-label">BR Date Processed</label>
+                                <input type="text" class="form-control" id="br_date_processed" name="br_date_processed" 
+                                       value="{{ line_item.br_date_processed|default:'' }}" placeholder="MM/DD/YYYY">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="bills_paid" class="form-label">Bills Paid</label>
+                                <input type="number" class="form-control" id="bills_paid" name="bills_paid" 
+                                       value="{{ line_item.bills_paid|default:'' }}" min="0">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="bill_reviewed" class="form-label">Bill Reviewed</label>
+                                <select class="form-select" id="bill_reviewed" name="bill_reviewed">
+                                    <option value="Y" {% if line_item.bill_reviewed == 'Y' %}selected{% endif %}>Yes</option>
+                                    <option value="N" {% if line_item.bill_reviewed == 'N' %}selected{% endif %}>No</option>
+                                    <option value="" {% if not line_item.bill_reviewed %}selected{% endif %}>Not Set</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="created_at" class="form-label">Created At</label>
+                                <input type="datetime-local" class="form-control" id="created_at" name="created_at" 
+                                       value="{% if line_item.created_at %}{{ line_item.created_at|date:'Y-m-d\TH:i' }}{% endif %}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="updated_at" class="form-label">Updated At</label>
+                                <input type="datetime-local" class="form-control" id="updated_at" name="updated_at" 
+                                       value="{% if line_item.updated_at %}{{ line_item.updated_at|date:'Y-m-d\TH:i' }}{% endif %}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                        <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

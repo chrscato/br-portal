@@ -1,0 +1,215 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Order Search - Clarity Dx Bill Review Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-search"></i> Order Search</h2>
+                <p class="text-muted">Search for orders by patient information and order line item date of service</p>
+            </div>
+            <div>
+                <a href="{% url 'billing:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Form -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-search"></i> Search Orders</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="first_name" class="form-label">Patient First Name</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" 
+                               value="{{ first_name }}" placeholder="Enter first name...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="last_name" class="form-label">Patient Last Name</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" 
+                               value="{{ last_name }}" placeholder="Enter last name...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="dos_date" class="form-label">Date of Service</label>
+                        <input type="date" class="form-control" id="dos_date" name="dos_date" 
+                               value="{{ dos_date }}">
+                        <small class="form-text text-muted">Searches order line items ±60 days from this date</small>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Search Orders
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Results -->
+{% if search_results %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i> Search Results 
+                    <span class="badge bg-primary">{{ search_results.paginator.count }} orders found</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Patient Name</th>
+                                <th>Date of Service</th>
+                                <th>Line Items</th>
+                                <th>Associated Bill</th>
+                                <th>Bill Status</th>
+                                <th>Bill Paid</th>
+                                <th>Total Charge</th>
+                                <th>Created</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in search_results %}
+                            <tr>
+                                <td>
+                                    <code>{{ result.order_id }}</code>
+                                    {% if result.duplicate_count > 1 %}
+                                        <br><small class="text-warning"><i class="fas fa-exclamation-triangle"></i> {{ result.duplicate_count }} duplicates</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ result.patient_name }}</strong>
+                                </td>
+                                <td>{{ result.dos }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ result.line_item_count }}</span>
+                                </td>
+                                <td>
+                                    {% if result.associated_bill %}
+                                        <code>{{ result.bill_id }}</code>
+                                    {% else %}
+                                        <span class="text-muted">No Bill</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if result.associated_bill %}
+                                        <span class="badge status-badge bg-{% if result.bill_status == 'ESCALATE' %}danger{% elif result.bill_status == 'MAPPED' %}warning{% elif result.bill_status == 'REVIEWED' %}success{% elif result.bill_status == 'VALID' %}info{% elif result.bill_status == 'INVALID' %}danger{% else %}secondary{% endif %}">
+                                            {{ result.bill_status }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">No Bill</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if result.associated_bill %}
+                                        <span class="badge bg-{% if result.bill_paid == 'Y' %}success{% elif result.bill_paid == 'N' %}danger{% else %}warning{% endif %}">
+                                            {{ result.bill_paid|default:"Not Set" }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if result.total_charge %}
+                                        ${{ result.total_charge|floatformat:2 }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if result.created_at %}
+                                        {{ result.created_at|date:"M d, Y" }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'billing:order_detail' result.order_id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View Order
+                                    </a>
+                                    {% if result.associated_bill %}
+                                        <a href="{% url 'billing:bill_detail' result.bill_id %}" class="btn btn-sm btn-outline-success">
+                                            <i class="fas fa-file-invoice"></i> View Bill
+                                        </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if search_results.has_other_pages %}
+                <nav aria-label="Search results pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if search_results.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if first_name %}first_name={{ first_name }}&{% endif %}{% if last_name %}last_name={{ last_name }}&{% endif %}{% if dos_date %}dos_date={{ dos_date }}&{% endif %}page=1">
+                                    <i class="fas fa-angle-double-left"></i> First
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if first_name %}first_name={{ first_name }}&{% endif %}{% if last_name %}last_name={{ last_name }}&{% endif %}{% if dos_date %}dos_date={{ dos_date }}&{% endif %}page={{ search_results.previous_page_number }}">
+                                    <i class="fas fa-angle-left"></i> Previous
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ search_results.number }} of {{ search_results.paginator.num_pages }}
+                            </span>
+                        </li>
+                        
+                        {% if search_results.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if first_name %}first_name={{ first_name }}&{% endif %}{% if last_name %}last_name={{ last_name }}&{% endif %}{% if dos_date %}dos_date={{ dos_date }}&{% endif %}page={{ search_results.next_page_number }}">
+                                    Next <i class="fas fa-angle-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if first_name %}first_name={{ first_name }}&{% endif %}{% if last_name %}last_name={{ last_name }}&{% endif %}{% if dos_date %}dos_date={{ dos_date }}&{% endif %}page={{ search_results.paginator.num_pages }}">
+                                    Last <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% elif first_name or last_name or dos_date %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No orders found</h5>
+                <p class="text-muted">Try adjusting your search criteria or search with different terms.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,318 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Mapping Queue - Clarity Dx Bill Review Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-map-marker-alt"></i> Mapping Queue</h2>
+                <p class="text-muted">Map provider bills to orders by searching patient information</p>
+            </div>
+            <div>
+                <a href="{% url 'billing:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Form -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-search"></i> Search Orders for Mapping</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="first_name" class="form-label">Patient First Name</label>
+                        <input type="text" class="form-control" id="first_name" name="first_name" 
+                               value="{{ first_name }}" placeholder="Enter first name...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="last_name" class="form-label">Patient Last Name</label>
+                        <input type="text" class="form-control" id="last_name" name="last_name" 
+                               value="{{ last_name }}" placeholder="Enter last name...">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="dos_date" class="form-label">Date of Service</label>
+                        <input type="date" class="form-control" id="dos_date" name="dos_date" 
+                               value="{{ dos_date }}">
+                        <small class="form-text text-muted">Searches ±60 days from this date</small>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">&nbsp;</label>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Search Orders
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Unmapped Bills -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> Unmapped Bills ({{ bills|length }})
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if bills %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Bill ID</th>
+                                <th>Patient Name</th>
+                                <th>Provider</th>
+                                <th>Total Charge</th>
+                                <th>Created</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for bill in bills %}
+                            <tr>
+                                <td><code>{{ bill.id }}</code></td>
+                                <td>{{ bill.patient_name|default:"N/A" }}</td>
+                                <td>{{ bill.billing_provider_name|default:"N/A" }}</td>
+                                <td>
+                                    {% if bill.total_charge %}
+                                        ${{ bill.total_charge|floatformat:2 }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if bill.created_at %}
+                                        {{ bill.created_at|date:"M d, Y" }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center">No unmapped bills found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Results -->
+{% if search_results %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i> Search Results ({{ search_results|length }})
+                    {% if last_name or dos_date %}
+                    <small class="text-muted">
+                        - Last Name: "{{ last_name|default:'Any' }}" | 
+                        DOS: {{ dos_date|default:'Any' }}
+                    </small>
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>First Name</th>
+                                <th>Last Name</th>
+                                <th>CPT Codes</th>
+                                <th>Date of Service</th>
+                                <th>Description</th>
+                                <th>Provider Billing Name</th>
+                                <th>Order ID</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in search_results %}
+                            <tr>
+                                <td>
+                                    <strong>{{ result.patient_first_name|default:"N/A" }}</strong>
+                                    {% if result.line_item_count > 1 %}
+                                        <br><small class="text-muted">{{ result.line_item_count }} line items</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ result.patient_last_name|default:"N/A" }}</strong>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        {% for cpt in result.cpt_list %}
+                                            {% if result.cpt_list|length > 1 %}
+                                                <code class="badge bg-primary">{{ cpt }}</code>
+                                            {% else %}
+                                                <code class="badge bg-danger">{{ cpt }}</code>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td>{{ result.dos }}</td>
+                                <td>
+                                    {% if result.line_item_count > 1 %}
+                                        <div class="text-truncate" style="max-width: 200px;" title="{{ result.descriptions }}">
+                                            {{ result.descriptions }}
+                                        </div>
+                                    {% else %}
+                                        {{ result.descriptions }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ result.provider_billing_name }}</strong>
+                                </td>
+                                <td><code>{{ result.order_id }}</code></td>
+                                <td>
+                                    <button class="btn btn-sm btn-success" 
+                                            onclick="showMapModal('{{ result.order_id }}', '{{ result.patient_name }}', '{{ result.cpt_codes }}', '{{ result.dos }}')">
+                                        <i class="fas fa-link"></i> Map to Bill
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if search_results.has_other_pages %}
+                <nav aria-label="Search results pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if search_results.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if last_name %}last_name={{ last_name }}&{% endif %}{% if dos_date %}dos_date={{ dos_date }}&{% endif %}page=1">&laquo; First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if last_name %}last_name={{ last_name }}&{% endif %}{% if dos_date %}dos_date={{ dos_date }}&{% endif %}page={{ search_results.previous_page_number }}">Previous</a>
+                        </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ search_results.number }} of {{ search_results.paginator.num_pages }}
+                            </span>
+                        </li>
+                        
+                        {% if search_results.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if last_name %}last_name={{ last_name }}&{% endif %}{% if dos_date %}dos_date={{ dos_date }}&{% endif %}page={{ search_results.next_page_number }}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if last_name %}last_name={{ last_name }}&{% endif %}{% if dos_date %}dos_date={{ dos_date }}&{% endif %}page={{ search_results.paginator.num_pages }}">Last &raquo;</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% elif last_name or dos_date %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No matching orders found</h4>
+                <p class="text-muted">Try adjusting your search criteria.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Map Bill Modal -->
+<div class="modal fade" id="mapBillModal" tabindex="-1" aria-labelledby="mapBillModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mapBillModalLabel">Map Bill to Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'billing:map_bill' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Order Information:</label>
+                        <div class="card">
+                            <div class="card-body">
+                                <p><strong>Order ID:</strong> <code id="modal-order-id"></code></p>
+                                <p><strong>Patient:</strong> <span id="modal-patient-name"></span></p>
+                                <p><strong>CPT:</strong> <code id="modal-cpt"></code></p>
+                                <p><strong>DOS:</strong> <span id="modal-dos"></span></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="bill-select" class="form-label">Select Bill to Map:</label>
+                        <select class="form-select" id="bill-select" name="bill_id" required>
+                            <option value="">Choose a bill...</option>
+                            {% for bill in bills %}
+                            <option value="{{ bill.id }}">
+                                {{ bill.id }} - {{ bill.patient_name|default:"N/A" }} 
+                                ({{ bill.billing_provider_name|default:"N/A" }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <input type="hidden" id="modal-order-id-input" name="order_id" value="">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-link"></i> Map Bill
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showMapModal(orderId, patientName, cpt, dos) {
+    // Populate modal with order information
+    document.getElementById('modal-order-id').textContent = orderId;
+    document.getElementById('modal-patient-name').textContent = patientName;
+    document.getElementById('modal-cpt').textContent = cpt;
+    document.getElementById('modal-dos').textContent = dos;
+    document.getElementById('modal-order-id-input').value = orderId;
+    
+    // Reset bill selection
+    document.getElementById('bill-select').selectedIndex = 0;
+    
+    // Show modal
+    var modal = new bootstrap.Modal(document.getElementById('mapBillModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

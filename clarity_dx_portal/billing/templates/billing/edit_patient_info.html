@@ -1,0 +1,98 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Edit Patient Info - Bill {{ bill.id }} - Clarity Dx Bill Review Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-user-edit"></i> Edit Patient Information</h2>
+                <p class="text-muted">Edit patient details for Bill {{ bill.id }}</p>
+            </div>
+            <div>
+                <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Bill Detail
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Patient Information</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="patient_name" class="form-label">Patient Name</label>
+                                <input type="text" class="form-control" id="patient_name" name="patient_name" 
+                                       value="{{ bill.patient_name|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="patient_dob" class="form-label">Date of Birth</label>
+                                <input type="text" class="form-control" id="patient_dob" name="patient_dob" 
+                                       value="{{ bill.patient_dob|default:'' }}" placeholder="MM/DD/YYYY">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="patient_zip" class="form-label">ZIP Code</label>
+                                <input type="text" class="form-control" id="patient_zip" name="patient_zip" 
+                                       value="{{ bill.patient_zip|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="patient_account_no" class="form-label">Account Number</label>
+                                <input type="text" class="form-control" id="patient_account_no" name="patient_account_no" 
+                                       value="{{ bill.patient_account_no|default:'' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="billing_provider_name" class="form-label">Billing Provider Name</label>
+                                <input type="text" class="form-control" id="billing_provider_name" name="billing_provider_name" 
+                                       value="{{ bill.billing_provider_name|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="billing_provider_tin" class="form-label">Billing Provider TIN</label>
+                                <input type="text" class="form-control" id="billing_provider_tin" name="billing_provider_tin" 
+                                       value="{{ bill.billing_provider_tin|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="billing_provider_npi" class="form-label">Billing Provider NPI</label>
+                                <input type="text" class="form-control" id="billing_provider_npi" name="billing_provider_npi" 
+                                       value="{{ bill.billing_provider_npi|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="billing_provider_address" class="form-label">Billing Provider Address</label>
+                                <textarea class="form-control" id="billing_provider_address" name="billing_provider_address" 
+                                          rows="3">{{ bill.billing_provider_address|default:'' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                        <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Edit Bill {{ bill.id }} - Clarity Dx Bill Review Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-edit"></i> Edit Bill {{ bill.id }}</h2>
+                <p class="text-muted">Edit bill information and status</p>
+            </div>
+            <div>
+                <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Bill Detail
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Bill Information</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id" class="form-label">Bill ID</label>
+                                <input type="text" class="form-control" id="id" name="id" 
+                                       value="{{ bill.id }}" readonly>
+                                <small class="form-text text-muted">Bill ID cannot be changed</small>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="claim_id" class="form-label">Claim ID</label>
+                                <input type="text" class="form-control" id="claim_id" name="claim_id" 
+                                       value="{{ bill.claim_id|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="uploaded_by" class="form-label">Uploaded By</label>
+                                <input type="text" class="form-control" id="uploaded_by" name="uploaded_by" 
+                                       value="{{ bill.uploaded_by|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="source_file" class="form-label">Source File</label>
+                                <input type="text" class="form-control" id="source_file" name="source_file" 
+                                       value="{{ bill.source_file|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="status" class="form-label">Status</label>
+                                <select class="form-select" id="status" name="status" required>
+                                    {% for value, label in status_choices %}
+                                        <option value="{{ value }}" {% if bill.status == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="action" class="form-label">Action</label>
+                                <select class="form-select" id="action" name="action" required>
+                                    {% for value, label in action_choices %}
+                                        <option value="{{ value }}" {% if bill.action == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="bill_paid" class="form-label">Bill Paid</label>
+                                <select class="form-select" id="bill_paid" name="bill_paid">
+                                    <option value="Y" {% if bill.bill_paid == 'Y' %}selected{% endif %}>Yes</option>
+                                    <option value="N" {% if bill.bill_paid == 'N' %}selected{% endif %}>No</option>
+                                    <option value="" {% if not bill.bill_paid %}selected{% endif %}>Not Set</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="total_charge" class="form-label">Total Charge</label>
+                                <input type="number" class="form-control" id="total_charge" name="total_charge" 
+                                       value="{{ bill.total_charge|default:'' }}" step="0.01" min="0">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="patient_account_no" class="form-label">Patient Account Number</label>
+                                <input type="text" class="form-control" id="patient_account_no" name="patient_account_no" 
+                                       value="{{ bill.patient_account_no|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="created_at" class="form-label">Created At</label>
+                                <input type="datetime-local" class="form-control" id="created_at" name="created_at" 
+                                       value="{% if bill.created_at %}{{ bill.created_at|date:'Y-m-d\TH:i' }}{% endif %}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="updated_at" class="form-label">Updated At</label>
+                                <input type="datetime-local" class="form-control" id="updated_at" name="updated_at" 
+                                       value="{% if bill.updated_at %}{{ bill.updated_at|date:'Y-m-d\TH:i' }}{% endif %}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="last_error" class="form-label">Last Error</label>
+                                <textarea class="form-control" id="last_error" name="last_error" rows="3">{{ bill.last_error|default:'' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                        <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

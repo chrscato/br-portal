@@ -1,0 +1,2736 @@
+{
+  "inspection_date": "2025-09-05T20:08:13.489565",
+  "database_path": "monolith.db",
+  "core_tables": [
+    "ProviderBill",
+    "BillLineItem",
+    "orders",
+    "order_line_items",
+    "dim_proc",
+    "ppo",
+    "providers",
+    "ota"
+  ],
+  "missing_tables": [],
+  "existing_tables": [
+    "ProviderBill",
+    "BillLineItem",
+    "orders",
+    "order_line_items",
+    "dim_proc",
+    "ppo",
+    "providers",
+    "ota"
+  ],
+  "table_schemas": {
+    "ProviderBill": {
+      "table_name": "ProviderBill",
+      "row_count": 2100,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": true
+        },
+        {
+          "name": "claim_id",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "uploaded_by",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "source_file",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "status",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "last_error",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "patient_name",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "patient_dob",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "patient_zip",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "billing_provider_name",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "billing_provider_address",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "billing_provider_tin",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "billing_provider_npi",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "total_charge",
+          "type": "REAL",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "patient_account_no",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "action",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "bill_paid",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "idx_providerbill_claim_id",
+          "unique": false,
+          "origin": "c"
+        },
+        {
+          "name": "sqlite_autoindex_ProviderBill_1",
+          "unique": true,
+          "origin": "pk"
+        }
+      ],
+      "sample_data": {
+        "columns": [
+          "id",
+          "claim_id",
+          "uploaded_by",
+          "source_file",
+          "status",
+          "last_error",
+          "created_at",
+          "patient_name",
+          "patient_dob",
+          "patient_zip",
+          "billing_provider_name",
+          "billing_provider_address",
+          "billing_provider_tin",
+          "billing_provider_npi",
+          "total_charge",
+          "patient_account_no",
+          "action",
+          "bill_paid",
+          "updated_at"
+        ],
+        "rows": [
+          [
+            "20241217_1028",
+            "109A6DE3-28D2-3644-BCE7-11781F921E1D",
+            null,
+            null,
+            "ESCALATE",
+            "pdf not pulling up",
+            null,
+            "FOFANA MUSA A",
+            "06/21/65",
+            "",
+            "",
+            "",
+            "54-0647482",
+            "",
+            5472.0,
+            "999999999",
+            "resolve_escalation",
+            null,
+            null
+          ],
+          [
+            "20241217_1042",
+            "0FD18E98-70C9-4EDA-8405-A3447B9C88A5",
+            null,
+            null,
+            "ESCALATE",
+            "pdf not pulling up",
+            null,
+            "SARACENO, THOMAS",
+            "05 15 1969",
+            "",
+            "",
+            "",
+            "204363724",
+            "",
+            1057.26,
+            "102305776-1/AW",
+            "resolve_escalation",
+            null,
+            null
+          ],
+          [
+            "20241217_1060",
+            "6B52C5CD-9AFE-420F-9250-95904879F6F3",
+            null,
+            null,
+            "MAPPED",
+            "Provider information not found",
+            null,
+            "ALGARA JENNIFER",
+            "02 28 1984",
+            "",
+            "",
+            "",
+            "",
+            "",
+            2309.0,
+            "1276132358",
+            "to_review",
+            "Y",
+            "2025-06-04 02:44:52"
+          ],
+          [
+            "20241217_1077",
+            "3AED5C8F-7ACD-4D5C-A569-2EA8C8ABA02E",
+            null,
+            null,
+            "REVIEWED",
+            null,
+            null,
+            "BLADE, JULIAN A",
+            "MX\n12 02 2000",
+            "",
+            "",
+            "",
+            "542041643",
+            "",
+            150.0,
+            "",
+            "apply_rate",
+            "Y",
+            "2025-06-04 02:44:52"
+          ],
+          [
+            "20241217_1083",
+            "FF239701-F9D8-40B7-8DA6-59A95F9DD7C8",
+            null,
+            null,
+            "MAPPED",
+            "Provider information not found",
+            null,
+            "RIDLEY, ALESIA",
+            "08161994",
+            "",
+            "",
+            "",
+            "",
+            "",
+            4769.0,
+            "1210426954501",
+            "to_review",
+            "Y",
+            "2025-06-04 02:44:52"
+          ]
+        ]
+      }
+    },
+    "BillLineItem": {
+      "table_name": "BillLineItem",
+      "row_count": 3532,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": true
+        },
+        {
+          "name": "provider_bill_id",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "cpt_code",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "modifier",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "units",
+          "type": "INTEGER",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "charge_amount",
+          "type": "REAL",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "allowed_amount",
+          "type": "REAL",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "decision",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "reason_code",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "date_of_service",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "place_of_service",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "diagnosis_pointer",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        }
+      ],
+      "foreign_keys": [
+        {
+          "column": "provider_bill_id",
+          "references_table": "ProviderBill",
+          "references_column": "id",
+          "on_update": "NO ACTION",
+          "on_delete": "NO ACTION"
+        }
+      ],
+      "indexes": [],
+      "sample_data": {
+        "columns": [
+          "id",
+          "provider_bill_id",
+          "cpt_code",
+          "modifier",
+          "units",
+          "charge_amount",
+          "allowed_amount",
+          "decision",
+          "reason_code",
+          "date_of_service",
+          "place_of_service",
+          "diagnosis_pointer"
+        ],
+        "rows": [
+          [
+            1,
+            "20241217_1028",
+            "72131",
+            "",
+            1,
+            2736.0,
+            null,
+            "pending",
+            "",
+            "10/31/24",
+            "",
+            "A"
+          ],
+          [
+            2,
+            "20241217_1028",
+            "72192",
+            "",
+            1,
+            2736.0,
+            null,
+            "pending",
+            "",
+            "10/31/24",
+            "",
+            "A"
+          ],
+          [
+            3,
+            "20241217_1042",
+            "72192",
+            "",
+            1,
+            597.53,
+            null,
+            "pending",
+            "",
+            "08/21/24",
+            "11",
+            "A"
+          ],
+          [
+            4,
+            "20241217_1042",
+            "27096",
+            "",
+            1,
+            459.73,
+            null,
+            "pending",
+            "",
+            "08/21/24",
+            "11",
+            "A"
+          ],
+          [
+            5,
+            "20241217_1060",
+            "72141",
+            "",
+            1,
+            2309.0,
+            250.0,
+            "APPROVED",
+            null,
+            "11/25/24",
+            "11",
+            "A"
+          ]
+        ]
+      }
+    },
+    "orders": {
+      "table_name": "orders",
+      "row_count": 24370,
+      "columns": [
+        {
+          "name": "Order_ID",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "FileMaker_Record_Number",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Patient_Address",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Patient_City",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Patient_State",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Patient_Zip",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Patient_Injury_Date",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Patient_Injury_Description",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Patient_DOB",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Patient_Last_Name",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Patient_First_Name",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "PatientName",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "PatientPhone",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Referring_Physician",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Referring_Physician_NPI",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Assigning_Company",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Assigning_Adjuster",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Claim_Number",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Order_Type",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Jurisdiction_State",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "is_active",
+          "type": "REAL",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "bundle_type",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "provider_id",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "provider_name",
+          "type": "NUMERIC",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "BILLS_PAID",
+          "type": "INTEGER",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "FULLY_PAID",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "BILLS_REC",
+          "type": "INTEGER",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "idx_orders_order_id",
+          "unique": false,
+          "origin": "c"
+        }
+      ],
+      "sample_data": {
+        "columns": [
+          "Order_ID",
+          "FileMaker_Record_Number",
+          "Patient_Address",
+          "Patient_City",
+          "Patient_State",
+          "Patient_Zip",
+          "Patient_Injury_Date",
+          "Patient_Injury_Description",
+          "Patient_DOB",
+          "Patient_Last_Name",
+          "Patient_First_Name",
+          "PatientName",
+          "PatientPhone",
+          "Referring_Physician",
+          "Referring_Physician_NPI",
+          "Assigning_Company",
+          "Assigning_Adjuster",
+          "Claim_Number",
+          "Order_Type",
+          "Jurisdiction_State",
+          "created_at",
+          "updated_at",
+          "is_active",
+          "bundle_type",
+          "provider_id",
+          "provider_name",
+          "BILLS_PAID",
+          "FULLY_PAID",
+          "BILLS_REC"
+        ],
+        "rows": [
+          [
+            "9FA09723-9EC6-49CD-9EA6-817636F1F4D3",
+            "20211001979",
+            "5975 Westgate Dr ",
+            "Orlando",
+            "FL",
+            "32835",
+            "10/16/2021",
+            "Groin - Hernia",
+            "11/6/1977",
+            "Shandi",
+            "Arash",
+            "Arash Shandi",
+            "(407)267-5697",
+            null,
+            null,
+            "Benchmark Administrators",
+            "Sherry Burgos-Cox",
+            "7200832",
+            "Imaging",
+            "FL",
+            "2024-12-26 14:00:10",
+            "2024-12-26 14:00:10",
+            1.0,
+            null,
+            "47494505-A5DF-42A3-9675-6F05671B4AAC",
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "9F444498-9835-4DEC-95A3-4E8501665841",
+            "20211102123",
+            " ",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "6/11/1969",
+            "Franco Caballo",
+            "Rosalinda",
+            "Rosalinda Franco Caballo",
+            null,
+            null,
+            null,
+            "Publix Super Markets, Inc.",
+            "Sherry Penrod",
+            "WC2021575655",
+            "Imaging",
+            "TN",
+            "2024-12-26 14:00:10",
+            "2024-12-26 14:00:10",
+            1.0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "A54AD8FC-4273-4543-BE0E-1055E59FD2D8",
+            "20221005650",
+            "14306 County Road 1420 ",
+            "Wolfforth ",
+            "TX",
+            "79382",
+            "4/24/2022",
+            "Hand",
+            "4/28/1963",
+            "Litton",
+            "Kathryn",
+            "Kathryn Litton",
+            "(806)782-6463",
+            null,
+            null,
+            "Next Level Administrators LLC",
+            "April Fulford",
+            "SZ2200019735",
+            "Imaging",
+            "FL",
+            "2024-12-26 14:00:10",
+            "2024-12-26 14:00:10",
+            1.0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "17E29923-4573-4DAA-85DA-DCE46A6D117F",
+            "2020900185",
+            "14680 Sunny Waters Lane ",
+            "Delray Beach",
+            "FL",
+            "33484",
+            "5/31/2020",
+            "Left Foot",
+            "12/2/1963",
+            "Carbonell",
+            "Eliades",
+            "Eliades Carbonell",
+            "305-282-9552",
+            "Joseph Chalal",
+            "1962454082",
+            "ArcBest",
+            "Laura Cruce",
+            "ABF20200724",
+            "Imaging",
+            null,
+            "2024-12-26 14:00:10",
+            "2024-12-26 14:00:10",
+            1.0,
+            null,
+            "5EFFA519-D5C9-4EE8-9F38-36C4CDC311C1",
+            null,
+            null,
+            null,
+            null
+          ],
+          [
+            "7FCD2964-4BD5-40B5-933D-F2E58EBC270F",
+            "2020900186",
+            "509 NE Davis Ave ",
+            "Lake City",
+            "FL",
+            "32055",
+            "3/30/2020",
+            "Left ankle, left knee",
+            "7/20/1959",
+            "Rollins",
+            "Wade",
+            "Wade Rollins",
+            "386-623-9796",
+            "Al Otero",
+            "1801011663",
+            "PGCS",
+            "Ivis Lugo",
+            "365708",
+            "Imaging",
+            null,
+            "2024-12-26 14:00:10",
+            "2024-12-26 14:00:10",
+            1.0,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ]
+        ]
+      }
+    },
+    "order_line_items": {
+      "table_name": "order_line_items",
+      "row_count": 42978,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Order_ID",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "DOS",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "CPT",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Modifier",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Units",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Description",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Charge",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "line_number",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "is_active",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "BR_paid",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "BR_rate",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "EOBR_doc_no",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "HCFA_doc_no",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "BR_date_processed",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "BILLS_PAID",
+          "type": "INTEGER",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "BILL_REVIEWED",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "sample_data": {
+        "columns": [
+          "id",
+          "Order_ID",
+          "DOS",
+          "CPT",
+          "Modifier",
+          "Units",
+          "Description",
+          "Charge",
+          "line_number",
+          "created_at",
+          "updated_at",
+          "is_active",
+          "BR_paid",
+          "BR_rate",
+          "EOBR_doc_no",
+          "HCFA_doc_no",
+          "BR_date_processed",
+          "BILLS_PAID",
+          "BILL_REVIEWED"
+        ],
+        "rows": [
+          [
+            "3",
+            "9FA09723-9EC6-49CD-9EA6-817636F1F4D3",
+            "2021-11-09",
+            "74176",
+            "None",
+            "None",
+            "CT of Pelvis ",
+            "nan",
+            "1",
+            "2024-12-26 14:00:10",
+            "2024-12-26 14:00:10",
+            "1.0",
+            "None",
+            "nan",
+            "None",
+            "None",
+            "None",
+            null,
+            null
+          ],
+          [
+            "4",
+            "17E29923-4573-4DAA-85DA-DCE46A6D117F",
+            "2020-09-17",
+            "73221",
+            "None",
+            "None",
+            "None",
+            "445.0",
+            "1",
+            "2024-12-26 14:00:10",
+            "2024-12-26 14:00:10",
+            "1.0",
+            "None",
+            "nan",
+            "None",
+            "None",
+            "None",
+            null,
+            null
+          ],
+          [
+            "5",
+            "7FCD2964-4BD5-40B5-933D-F2E58EBC270F",
+            "2020-09-16",
+            "73221",
+            "None",
+            "None",
+            "MRI Left Knee without Contrast",
+            "435.0",
+            "1",
+            "2024-12-26 14:00:10",
+            "2024-12-26 14:00:10",
+            "1.0",
+            "None",
+            "nan",
+            "None",
+            "None",
+            "None",
+            null,
+            null
+          ],
+          [
+            "6",
+            "7FCD2964-4BD5-40B5-933D-F2E58EBC270F",
+            "2020-09-16",
+            "73221",
+            "None",
+            "None",
+            "MRI Left Ankle without Contrast",
+            "435.0",
+            "2",
+            "2024-12-26 14:00:10",
+            "2024-12-26 14:00:10",
+            "1.0",
+            "None",
+            "nan",
+            "None",
+            "None",
+            "None",
+            null,
+            null
+          ],
+          [
+            "7",
+            "BADF87CA-14D8-4AE4-8A20-7B63EBE57919",
+            "2020-09-15",
+            "73721",
+            "None",
+            "None",
+            "MRI Right Knee without contrast",
+            "435.0",
+            "1",
+            "2024-12-26 14:00:10",
+            "2024-12-26 14:00:10",
+            "1.0",
+            "None",
+            "nan",
+            "None",
+            "None",
+            "None",
+            null,
+            null
+          ]
+        ]
+      }
+    },
+    "dim_proc": {
+      "table_name": "dim_proc",
+      "row_count": 263,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": true
+        },
+        {
+          "name": "proc_cd",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "modifier",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "proc_desc",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "category",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "subcategory",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "sample_data": {
+        "columns": [
+          "id",
+          "proc_cd",
+          "modifier",
+          "proc_desc",
+          "category",
+          "subcategory"
+        ],
+        "rows": [
+          [
+            6,
+            "74181",
+            null,
+            "MRI ABDOMEN W/O DYE",
+            "MRI w/o",
+            "Abdomen/Pelvis"
+          ],
+          [
+            7,
+            "70551",
+            null,
+            "MRI BRAIN STEM W/O DYE",
+            "MRI w/o",
+            "Brain"
+          ],
+          [
+            8,
+            "72141",
+            null,
+            "MRI NECK SPINE W/O DYE",
+            "MRI w/o",
+            "Spine"
+          ],
+          [
+            9,
+            "71550",
+            null,
+            "MRI CHEST W/O DYE",
+            "MRI w/o",
+            "Chest"
+          ],
+          [
+            10,
+            "73721",
+            null,
+            "MRI JNT OF LWR EXTRE W/O DYE",
+            "MRI w/o",
+            "Lower Extremity"
+          ]
+        ]
+      }
+    },
+    "ppo": {
+      "table_name": "ppo",
+      "row_count": 19571,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "RenderingState",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "TIN",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "provider_name",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "proc_cd",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "modifier",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "proc_desc",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "proc_category",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "rate",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "sample_data": {
+        "columns": [
+          "id",
+          "RenderingState",
+          "TIN",
+          "provider_name",
+          "proc_cd",
+          "modifier",
+          "proc_desc",
+          "proc_category",
+          "rate"
+        ],
+        "rows": [
+          [
+            "1",
+            "None",
+            "262562595",
+            "A-1 Imaging Centers, LLC",
+            "74181",
+            null,
+            "MRI ABDOMEN W/O DYE",
+            "MRI w/o",
+            "285"
+          ],
+          [
+            "2",
+            "None",
+            "262562595",
+            "A-1 Imaging Centers, LLC",
+            "70551",
+            null,
+            "MRI BRAIN STEM W/O DYE",
+            "MRI w/o",
+            "285"
+          ],
+          [
+            "3",
+            "None",
+            "262562595",
+            "A-1 Imaging Centers, LLC",
+            "72141",
+            null,
+            "MRI NECK SPINE W/O DYE",
+            "MRI w/o",
+            "285"
+          ],
+          [
+            "4",
+            "None",
+            "262562595",
+            "A-1 Imaging Centers, LLC",
+            "71550",
+            null,
+            "MRI CHEST W/O DYE",
+            "MRI w/o",
+            "285"
+          ],
+          [
+            "5",
+            "None",
+            "262562595",
+            "A-1 Imaging Centers, LLC",
+            "73721",
+            null,
+            "MRI JNT OF LWR EXTRE W/O DYE",
+            "MRI w/o",
+            "285"
+          ]
+        ]
+      }
+    },
+    "providers": {
+      "table_name": "providers",
+      "row_count": 2562,
+      "columns": [
+        {
+          "name": "_g_Dashboard_Provider_Diary",
+          "type": "REAL",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "_g_Dashboard_Provider_Status",
+          "type": "REAL",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Address 1 Full",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Address Line 1",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Address Line 2",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "All",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Angiography",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Arthrogram",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Billing Address 1",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Billing Address 2",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Billing Address City",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Billing Address Postal Code",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Billing Address State",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Billing Name",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Bone Density",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Breast MRI",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "City",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Contract Date",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Contract Date Renewal",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Country",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "CreatedBy",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "CreationTimestamp",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "CT",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "CT W",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "CT WO",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "CT WWO",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "CTA",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "DBA Name Billing Name",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Description",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Dexa",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Diary Date",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "distance",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Echo",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "EKG",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Email",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "EMG",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Fax Number",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Fluroscopy",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "ForeignKey",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "g_lat",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "g_lon",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "High Field Closed MRI",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "ImportIndex",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "lat",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Latitude",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Location",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "lon",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Longitude",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Magnet Strength Closed Tensile High Field",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Magnet Strength MRA Tensil",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Magnet Strength Open Tensile",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Mammo",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "ModificationTimestamp",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "ModifiedBy",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "MRA",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "MRI 1.5T",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "MRI 3.0T",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "MRI Open",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "MRI W",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "MRI Wide Bore",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "MRI WO",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "MRI WWO",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Name",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Need OTA",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "NPI",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "NUC Medicine",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "OrderForeignKey",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Other Service",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Parent",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "ParentKey",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "ParentSearch",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "PET",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Phone",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Postal Code",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Pricing Group",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Primary",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "PrimaryKey",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Provider Network",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Provider Status",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Provider Type",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Record Status",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "ServicesProvided",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "State",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Status",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "TIN",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "US",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Website",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Wide Bore",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "xlink",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "Xray",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "flag_is_hospital",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "sample_data": {
+        "columns": [
+          "_g_Dashboard_Provider_Diary",
+          "_g_Dashboard_Provider_Status",
+          "Address 1 Full",
+          "Address Line 1",
+          "Address Line 2",
+          "All",
+          "Angiography",
+          "Arthrogram",
+          "Billing Address 1",
+          "Billing Address 2",
+          "Billing Address City",
+          "Billing Address Postal Code",
+          "Billing Address State",
+          "Billing Name",
+          "Bone Density",
+          "Breast MRI",
+          "City",
+          "Contract Date",
+          "Contract Date Renewal",
+          "Country",
+          "CreatedBy",
+          "CreationTimestamp",
+          "CT",
+          "CT W",
+          "CT WO",
+          "CT WWO",
+          "CTA",
+          "DBA Name Billing Name",
+          "Description",
+          "Dexa",
+          "Diary Date",
+          "distance",
+          "Echo",
+          "EKG",
+          "Email",
+          "EMG",
+          "Fax Number",
+          "Fluroscopy",
+          "ForeignKey",
+          "g_lat",
+          "g_lon",
+          "High Field Closed MRI",
+          "ImportIndex",
+          "lat",
+          "Latitude",
+          "Location",
+          "lon",
+          "Longitude",
+          "Magnet Strength Closed Tensile High Field",
+          "Magnet Strength MRA Tensil",
+          "Magnet Strength Open Tensile",
+          "Mammo",
+          "ModificationTimestamp",
+          "ModifiedBy",
+          "MRA",
+          "MRI 1.5T",
+          "MRI 3.0T",
+          "MRI Open",
+          "MRI W",
+          "MRI Wide Bore",
+          "MRI WO",
+          "MRI WWO",
+          "Name",
+          "Need OTA",
+          "NPI",
+          "NUC Medicine",
+          "OrderForeignKey",
+          "Other Service",
+          "Parent",
+          "ParentKey",
+          "ParentSearch",
+          "PET",
+          "Phone",
+          "Postal Code",
+          "Pricing Group",
+          "Primary",
+          "PrimaryKey",
+          "Provider Network",
+          "Provider Status",
+          "Provider Type",
+          "Record Status",
+          "ServicesProvided",
+          "State",
+          "Status",
+          "TIN",
+          "US",
+          "Website",
+          "Wide Bore",
+          "xlink",
+          "Xray",
+          "flag_is_hospital"
+        ],
+        "rows": [
+          [
+            0.0,
+            162.0,
+            "3000 WEST MACARTHUR BLVD STE 600\nSANTA ANA, CA 92704",
+            "3000 WEST MACARTHUR BLVD",
+            "STE 600",
+            "Yes",
+            null,
+            "No",
+            "PO Box 826618",
+            null,
+            "Philadelphia",
+            "191826618",
+            "PA",
+            "Akumin Leesburg",
+            null,
+            "No",
+            "SANTA ANA",
+            null,
+            null,
+            "Lake",
+            "Admin",
+            "10/24/2019 15:03",
+            "No",
+            "190.0",
+            "160.0",
+            "250.0",
+            "No",
+            null,
+            null,
+            "No",
+            null,
+            "7801.98678053383",
+            "No",
+            "No",
+            "referrals@pomg.net",
+            null,
+            "352-388-4906",
+            "No",
+            null,
+            null,
+            null,
+            "Yes",
+            "13.0",
+            "33.6999094",
+            "33.6999094",
+            "Santa Ana",
+            "-117.9110326",
+            "-117.9110326",
+            "3.0T",
+            "3.0T",
+            null,
+            "No",
+            "5/31/2025 11:43",
+            "hthtechsolutions@icloud.com",
+            "Yes",
+            null,
+            null,
+            "No",
+            "325.0",
+            null,
+            "250.0",
+            "410.0",
+            "California Diagnostic Specialists, Inc. - Santa Ana",
+            "Yes",
+            "1346516853",
+            "No",
+            null,
+            "0.8",
+            null,
+            "B4E72F2E-9C68-4723-BE23-F676C9E25C67",
+            null,
+            "No",
+            "352-504-0525",
+            "92704.0",
+            "\u001d\u001d\u001d\u001d\u001d\u001d\u001d",
+            null,
+            "16E0EF92-A24F-41B3-80FA-4911C58DD46D",
+            "In Network",
+            "Contract Complete",
+            "EMG",
+            null,
+            " - High Field Closed MRI - Xray - MRA -  -  -  - Ultra Sound -  -  -  -  -  -  -  -  -  - All",
+            "CA",
+            "Inactive",
+            "833563413",
+            "Yes",
+            null,
+            null,
+            null,
+            "Yes",
+            "No"
+          ],
+          [
+            0.0,
+            162.0,
+            "2777 JEFFERSON ST STE\nCARLSBAD, CA 92008",
+            "2777 JEFFERSON ST",
+            "STE",
+            "Yes",
+            "No",
+            "No",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "No",
+            "No",
+            "CARLSBAD",
+            null,
+            null,
+            null,
+            "sam.camacho@clarity-dx.com",
+            "11/9/2023 17:01",
+            "No",
+            null,
+            null,
+            null,
+            "No",
+            "Clarity",
+            null,
+            "No",
+            null,
+            "7781.05459551623",
+            "No",
+            "No",
+            "referrals@pomg.net",
+            null,
+            null,
+            "No",
+            null,
+            null,
+            null,
+            "No",
+            null,
+            "33.1635651",
+            "33.1635651",
+            "CARLSBAD",
+            "-117.3478702",
+            "-117.3478702",
+            null,
+            null,
+            null,
+            "No",
+            "6/16/2025 11:04",
+            "jazzmine.vidal@clarity-dx.com",
+            "No",
+            "No",
+            "No",
+            "No",
+            null,
+            "No",
+            null,
+            null,
+            "California Diagnostic Specialists, Inc.-CARLSBAD",
+            "Yes",
+            null,
+            "No",
+            null,
+            null,
+            "Yes",
+            null,
+            null,
+            "No",
+            null,
+            "92008.0",
+            "\u001d\u001d\u001d\u001d\u001d\u001d\u001d",
+            null,
+            "E6ADBA26-400B-48F7-A1DF-1F2EF94F25D6",
+            "In Network",
+            "Contract Complete",
+            "EMG",
+            null,
+            " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - All",
+            "CA",
+            "Active",
+            "833563413",
+            "No",
+            null,
+            "No",
+            null,
+            "No",
+            "No"
+          ],
+          [
+            0.0,
+            162.0,
+            "9191 WESTMINSTER AVE STE. 209\nGARDEN GROVE, CA 92844",
+            "9191 WESTMINSTER AVE",
+            "STE. 209",
+            "Yes",
+            "No",
+            "No",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "No",
+            "GARDEN GROVE",
+            null,
+            null,
+            null,
+            "kim.cato@clarity-dx.com",
+            "1/20/2024 17:28",
+            "No",
+            null,
+            null,
+            null,
+            "No",
+            null,
+            null,
+            "No",
+            null,
+            "7803.9984010308",
+            "No",
+            "No",
+            "referrals@pomg.net",
+            null,
+            null,
+            "No",
+            null,
+            null,
+            null,
+            "No",
+            null,
+            "33.760072",
+            "33.760072",
+            "GARDEN GROVE",
+            "-117.968831",
+            "-117.968831",
+            null,
+            null,
+            null,
+            "No",
+            "5/31/2025 11:46",
+            "hthtechsolutions@icloud.com",
+            "No",
+            null,
+            null,
+            "No",
+            null,
+            null,
+            null,
+            null,
+            "California Diagnostic Specialists, Inc.-GARDEN GROVE",
+            "Yes",
+            null,
+            "No",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "No",
+            null,
+            "92844.0",
+            "\u001d\u001d\u001d\u001d\u001d\u001d\u001d",
+            null,
+            "5D4F1B98-991B-4CAA-9A05-E4E7AD743956",
+            "In Network",
+            "Contract Complete",
+            "EMG",
+            null,
+            " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - All",
+            "CA",
+            "Active",
+            "833563413",
+            "No",
+            null,
+            "No",
+            null,
+            "No",
+            "No"
+          ],
+          [
+            0.0,
+            162.0,
+            "1828 E. CESAR E CHAVEZ AVE  STE. 6300\nLOS ANGELES, CA 90033",
+            "1828 E. CESAR E CHAVEZ AVE",
+            " STE. 6300",
+            "Yes",
+            "No",
+            "No",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "No",
+            "LOS ANGELES",
+            null,
+            null,
+            null,
+            "sam.camacho@clarity-dx.com",
+            "1/23/2024 10:56",
+            "No",
+            null,
+            null,
+            null,
+            "No",
+            null,
+            null,
+            "No",
+            null,
+            "7811.85050470223",
+            "No",
+            "No",
+            "referrals@pomg.net",
+            null,
+            null,
+            "No",
+            null,
+            null,
+            null,
+            "No",
+            null,
+            "34.0499821",
+            "34.0499821",
+            "LOS ANGELES \u2013 90033",
+            "-118.2157059",
+            "-118.2157059",
+            null,
+            null,
+            null,
+            "No",
+            "5/31/2025 11:46",
+            "hthtechsolutions@icloud.com",
+            "No",
+            null,
+            null,
+            "No",
+            null,
+            null,
+            null,
+            null,
+            "California Diagnostic Specialists, Inc.-LOS ANGELES \u2013 90033",
+            "Yes",
+            null,
+            "No",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "No",
+            null,
+            "90033.0",
+            "\u001d\u001d\u001d\u001d\u001d\u001d\u001d",
+            null,
+            "78F6EAD6-4E26-421D-AD3D-9CBC8CAF08A1",
+            "In Network",
+            "Contract Complete",
+            "EMG",
+            null,
+            " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - All",
+            "CA",
+            "Active",
+            "833563413",
+            "No",
+            null,
+            "No",
+            null,
+            "No",
+            "No"
+          ],
+          [
+            0.0,
+            162.0,
+            "5211 EAST WASHINGTON BOULEVARD STE. 18\nLOS ANGELES, CA 90040",
+            "5211 EAST WASHINGTON BOULEVARD",
+            "STE. 18",
+            "Yes",
+            "No",
+            "No",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "No",
+            "LOS ANGELES",
+            null,
+            null,
+            null,
+            "kim.cato@clarity-dx.com",
+            "1/28/2024 21:12",
+            "No",
+            null,
+            null,
+            null,
+            "No",
+            null,
+            null,
+            "No",
+            null,
+            "7810.08309182599",
+            "No",
+            "No",
+            "referrals@pomg.net",
+            null,
+            null,
+            "No",
+            null,
+            null,
+            null,
+            "No",
+            null,
+            "34.0033876",
+            "34.0033876",
+            "LOS ANGELES - COMMERCE",
+            "-118.1666202",
+            "-118.1666202",
+            null,
+            null,
+            null,
+            "No",
+            "5/31/2025 11:46",
+            "hthtechsolutions@icloud.com",
+            "No",
+            null,
+            null,
+            "No",
+            null,
+            null,
+            null,
+            null,
+            "California Diagnostic Specialists, Inc.-LOS ANGELES - COMMERCE",
+            "Yes",
+            null,
+            "No",
+            null,
+            null,
+            "Yes",
+            null,
+            null,
+            "No",
+            null,
+            "90040.0",
+            "\u001d\u001d\u001d\u001d\u001d\u001d\u001d",
+            null,
+            "070A359D-0388-4937-91CB-9EF1BD7C5633",
+            "In Network",
+            "Contract Complete",
+            "EMG",
+            null,
+            " -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -  - All",
+            "CA",
+            "Active",
+            "833563413",
+            "No",
+            null,
+            "No",
+            null,
+            "No",
+            "No"
+          ]
+        ]
+      }
+    },
+    "ota": {
+      "table_name": "ota",
+      "row_count": 173,
+      "columns": [
+        {
+          "name": "ID_Order_PrimaryKey",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "CPT",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "modifier",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        },
+        {
+          "name": "rate",
+          "type": "TEXT",
+          "not_null": false,
+          "default_value": null,
+          "primary_key": false
+        }
+      ],
+      "foreign_keys": [],
+      "indexes": [],
+      "sample_data": {
+        "columns": [
+          "ID_Order_PrimaryKey",
+          "CPT",
+          "modifier",
+          "rate"
+        ],
+        "rows": [
+          [
+            "21A6A5D0-97D9-4544-994F-B1441A12CA8F",
+            "72141",
+            "None",
+            "250"
+          ],
+          [
+            "21A6A5D0-97D9-4544-994F-B1441A12CA8F",
+            "72040",
+            "None",
+            "25"
+          ],
+          [
+            "23224CB5-CA19-45F9-8F0C-5908BD6E4653",
+            "73221",
+            "None",
+            "400"
+          ],
+          [
+            "77A424A0-8D05-4C05-935B-0CDBA79F179D",
+            "73221",
+            "None",
+            "250"
+          ],
+          [
+            "23224CB5-CA19-45F9-8F0C-5908BD6E4653",
+            "73221",
+            "None",
+            "400"
+          ]
+        ]
+      }
+    }
+  },
+  "relationships": {
+    "ProviderBill": [],
+    "BillLineItem": [
+      {
+        "type": "foreign_key",
+        "local_column": "provider_bill_id",
+        "references_table": "ProviderBill",
+        "references_column": "id",
+        "on_update": "NO ACTION",
+        "on_delete": "NO ACTION"
+      }
+    ],
+    "orders": [],
+    "order_line_items": [],
+    "dim_proc": [],
+    "ppo": [],
+    "providers": [],
+    "ota": []
+  },
+  "summary": {
+    "total_tables_found": 8,
+    "total_tables_missing": 0,
+    "total_columns": 189,
+    "total_rows": 95549,
+    "tables_with_data": 8,
+    "key_insights": [
+      "ProviderBill primary key: id",
+      "BillLineItem primary key: id",
+      "BillLineItem has 1 foreign key relationship(s)",
+      "orders has 24,370 rows - large dataset",
+      "order_line_items has 42,978 rows - large dataset",
+      "dim_proc primary key: id",
+      "ppo has 19,571 rows - large dataset"
+    ]
+  }
+}

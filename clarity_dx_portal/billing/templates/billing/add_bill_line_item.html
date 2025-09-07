@@ -1,0 +1,104 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Add Bill Line Item - Clarity Dx Bill Review Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-plus"></i> Add Bill Line Item</h2>
+                <p class="text-muted">Add a new line item to bill {{ bill.id }}</p>
+            </div>
+            <div>
+                <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Bill Detail
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-edit"></i> New Line Item Details</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="cpt_code" class="form-label">CPT Code</label>
+                            <input type="text" class="form-control" id="cpt_code" name="cpt_code" 
+                                   placeholder="Enter CPT code...">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="modifier" class="form-label">Modifier</label>
+                            <input type="text" class="form-control" id="modifier" name="modifier" 
+                                   placeholder="Enter modifier...">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="units" class="form-label">Units</label>
+                            <input type="number" class="form-control" id="units" name="units" 
+                                   min="0" step="1" placeholder="Enter units...">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="decision" class="form-label">Decision</label>
+                            <select class="form-select" id="decision" name="decision">
+                                {% for value, label in decision_choices %}
+                                    <option value="{{ value }}" {% if value == 'pending' %}selected{% endif %}>{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="charge_amount" class="form-label">Charge Amount</label>
+                            <input type="number" class="form-control" id="charge_amount" name="charge_amount" 
+                                   min="0" step="0.01" placeholder="Enter charge amount...">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="allowed_amount" class="form-label">Allowed Amount</label>
+                            <input type="number" class="form-control" id="allowed_amount" name="allowed_amount" 
+                                   min="0" step="0.01" placeholder="Enter allowed amount...">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="reason_code" class="form-label">Reason Code</label>
+                            <input type="text" class="form-control" id="reason_code" name="reason_code" 
+                                   placeholder="Enter reason code...">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="date_of_service" class="form-label">Date of Service</label>
+                            <input type="text" class="form-control" id="date_of_service" name="date_of_service" 
+                                   placeholder="MM/DD/YYYY or MM/DD/YY">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="place_of_service" class="form-label">Place of Service</label>
+                            <input type="text" class="form-control" id="place_of_service" name="place_of_service" 
+                                   placeholder="Enter place of service...">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="diagnosis_pointer" class="form-label">Diagnosis Pointer</label>
+                            <input type="text" class="form-control" id="diagnosis_pointer" name="diagnosis_pointer" 
+                                   placeholder="Enter diagnosis pointer...">
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save"></i> Add Line Item
+                                </button>
+                                <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancel
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

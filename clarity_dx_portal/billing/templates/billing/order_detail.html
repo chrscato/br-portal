@@ -1,0 +1,236 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Order {{ order.order_id }} - Clarity Dx Bill Review Portal{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-clipboard-list"></i> Order {{ order.order_id }}</h2>
+                <p class="text-muted">Detailed view of order and associated bill information</p>
+            </div>
+            <div>
+                <a href="{% url 'billing:order_search' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Order Search
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Information -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Order Information</h5>
+            </div>
+            <div class="card-body">
+                {% if duplicate_count > 1 %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Warning:</strong> There are {{ duplicate_count }} orders with this ID. Showing the first one found.
+                    </div>
+                {% endif %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Order ID:</strong> <code>{{ order.order_id }}</code></p>
+                        <p><strong>Patient Name:</strong> {{ order.patient_name|default:"N/A" }}</p>
+                        <p><strong>Patient DOB:</strong> {{ order.patient_dob|default:"N/A" }}</p>
+                        <p><strong>Patient Phone:</strong> {{ order.patient_phone|default:"N/A" }}</p>
+                        <p><strong>Patient Address:</strong> {{ order.patient_address|default:"N/A" }}</p>
+                        <p><strong>Patient City:</strong> {{ order.patient_city|default:"N/A" }}</p>
+                        <p><strong>Patient State:</strong> {{ order.patient_state|default:"N/A" }}</p>
+                        <p><strong>Patient ZIP:</strong> {{ order.patient_zip|default:"N/A" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Referring Physician:</strong> {{ order.referring_physician|default:"N/A" }}</p>
+                        <p><strong>Referring Physician NPI:</strong> {{ order.referring_physician_npi|default:"N/A" }}</p>
+                        <p><strong>Assigning Company:</strong> {{ order.assigning_company|default:"N/A" }}</p>
+                        <p><strong>Assigning Adjuster:</strong> {{ order.assigning_adjuster|default:"N/A" }}</p>
+                        <p><strong>Claim Number:</strong> {{ order.claim_number|default:"N/A" }}</p>
+                        <p><strong>Order Type:</strong> {{ order.order_type|default:"N/A" }}</p>
+                        <p><strong>Jurisdiction State:</strong> {{ order.jurisdiction_state|default:"N/A" }}</p>
+                        <p><strong>Bundle Type:</strong> {{ order.bundle_type|default:"N/A" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Associated Bill Information -->
+{% if associated_bill %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-file-invoice"></i> Associated Bill</h5>
+                    <a href="{% url 'billing:bill_detail' associated_bill.id %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-external-link-alt"></i> View Full Bill Details
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Bill ID:</strong> <code>{{ associated_bill.id }}</code></p>
+                        <p><strong>Status:</strong> 
+                            <span class="badge status-badge bg-{% if associated_bill.status == 'ESCALATE' %}danger{% elif associated_bill.status == 'MAPPED' %}warning{% elif associated_bill.status == 'REVIEWED' %}success{% elif associated_bill.status == 'VALID' %}info{% elif associated_bill.status == 'INVALID' %}danger{% else %}secondary{% endif %}">
+                                {{ associated_bill.status }}
+                            </span>
+                        </p>
+                        <p><strong>Action:</strong> {{ associated_bill.action|default:"N/A" }}</p>
+                        <p><strong>Bill Paid:</strong> 
+                            <span class="badge bg-{% if associated_bill.bill_paid == 'Y' %}success{% elif associated_bill.bill_paid == 'N' %}danger{% else %}warning{% endif %}">
+                                {{ associated_bill.bill_paid|default:"Not Set" }}
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Total Charge:</strong> 
+                            {% if associated_bill.total_charge %}
+                                ${{ associated_bill.total_charge|floatformat:2 }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </p>
+                        <p><strong>Provider:</strong> {{ associated_bill.billing_provider_name|default:"N/A" }}</p>
+                        <p><strong>Provider TIN:</strong> {{ associated_bill.billing_provider_tin|default:"N/A" }}</p>
+                        <p><strong>Provider NPI:</strong> {{ associated_bill.billing_provider_npi|default:"N/A" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle text-warning"></i> No Associated Bill</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">This order does not have an associated bill yet. The bill may not have been created or mapped to this order.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Order Line Items -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list"></i> Order Line Items</h5>
+            </div>
+            <div class="card-body">
+                {% if order_line_items %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>CPT Code</th>
+                                <th>Modifier</th>
+                                <th>Units</th>
+                                <th>Description</th>
+                                <th>Charge</th>
+                                <th>Date of Service</th>
+                                <th>Line Number</th>
+                                <th>Active</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order_line_items %}
+                            <tr>
+                                <td><code>{{ item.cpt|default:"N/A" }}</code></td>
+                                <td>{{ item.modifier|default:"N/A" }}</td>
+                                <td>{{ item.units|default:"N/A" }}</td>
+                                <td>{{ item.description|default:"N/A" }}</td>
+                                <td>{{ item.charge|default:"N/A" }}</td>
+                                <td>{{ item.dos|default:"N/A" }}</td>
+                                <td>{{ item.line_number|default:"N/A" }}</td>
+                                <td>
+                                    <span class="badge bg-{% if item.is_active == 'Y' %}success{% elif item.is_active == 'N' %}danger{% else %}warning{% endif %}">
+                                        {{ item.is_active|default:"Not Set" }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center">No line items found for this order.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Associated Bill Line Items -->
+{% if associated_bill and bill_line_items %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list"></i> Associated Bill Line Items</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>CPT Code</th>
+                                <th>Modifier</th>
+                                <th>Units</th>
+                                <th>Charge Amount</th>
+                                <th>Allowed Amount</th>
+                                <th>Decision</th>
+                                <th>Date of Service</th>
+                                <th>Place of Service</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in bill_line_items %}
+                            <tr>
+                                <td><code>{{ item.cpt_code|default:"N/A" }}</code></td>
+                                <td>{{ item.modifier|default:"N/A" }}</td>
+                                <td>{{ item.units|default:"N/A" }}</td>
+                                <td>
+                                    {% if item.charge_amount %}
+                                        ${{ item.charge_amount|floatformat:2 }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.allowed_amount %}
+                                        ${{ item.allowed_amount|floatformat:2 }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-{% if item.decision == 'APPROVED' %}success{% elif item.decision == 'DENIED' %}danger{% else %}warning{% endif %}">
+                                        {{ item.decision|default:"Pending" }}
+                                    </span>
+                                </td>
+                                <td>{{ item.date_of_service|default:"N/A" }}</td>
+                                <td>{{ item.place_of_service|default:"N/A" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

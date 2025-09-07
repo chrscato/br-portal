@@ -1,0 +1,226 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}{{ queue_type }} Queue - Clarity Dx Bill Review Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-{% if queue_type == 'Validation' %}search{% elif queue_type == 'Mapping' %}map-marker-alt{% else %}flag{% endif %}"></i> {{ queue_type }} Queue</h2>
+                <p class="text-muted">Process bills with status: {{ status_filter }}</p>
+            </div>
+            <div>
+                <a href="{% url 'billing:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="mb-0">{{ bills|length }} bills in queue</h5>
+                    </div>
+                    <div class="col-auto">
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="refreshQueue()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if bills %}
+<div class="row">
+    {% for bill in bills %}
+    <div class="col-md-6 col-lg-4 mb-3">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="fas fa-file-invoice"></i> {{ bill.id }}
+                </h6>
+                <span class="badge status-badge bg-{% if bill.status == 'ESCALATE' %}danger{% elif bill.status == 'MAPPED' %}warning{% elif bill.status == 'REVIEWED' %}success{% elif bill.status == 'VALID' %}info{% elif bill.status == 'INVALID' %}danger{% else %}secondary{% endif %}">
+                    {{ bill.status }}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <strong>Patient:</strong> {{ bill.patient_name|default:"N/A" }}
+                </div>
+                <div class="mb-2">
+                    <strong>Provider:</strong> {{ bill.billing_provider_name|default:"N/A" }}
+                </div>
+                <div class="mb-2">
+                    <strong>Total Charge:</strong> 
+                    {% if bill.total_charge %}
+                        ${{ bill.total_charge|floatformat:2 }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </div>
+                {% if bill.last_error %}
+                <div class="mb-2">
+                    <strong>Last Error:</strong>
+                    <small class="text-danger">{{ bill.last_error|truncatechars:50 }}</small>
+                </div>
+                {% endif %}
+                <div class="mb-2">
+                    <strong>Action Required:</strong>
+                    <span class="badge bg-info">{{ bill.action|title }}</span>
+                </div>
+                <div class="mb-3">
+                    <strong>Updated:</strong>
+                    {% if bill.updated_at %}
+                        {{ bill.updated_at|date:"M d, Y H:i" }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-eye"></i> View Details
+                    </a>
+                    {% if queue_type == 'Validation' %}
+                    <button class="btn btn-success btn-sm" onclick="validateBill('{{ bill.id }}')">
+                        <i class="fas fa-check"></i> Validate
+                    </button>
+                    {% elif queue_type == 'Mapping' %}
+                    <button class="btn btn-info btn-sm" onclick="mapBill('{{ bill.id }}')">
+                        <i class="fas fa-map-marker-alt"></i> Map Provider
+                    </button>
+                    {% elif queue_type == 'Correction' %}
+                    <button class="btn btn-warning btn-sm" onclick="correctBill('{{ bill.id }}')">
+                        <i class="fas fa-edit"></i> Correct
+                    </button>
+                    {% elif queue_type == 'Rate Correction' %}
+                    <button class="btn btn-success btn-sm" onclick="reviewRate('{{ bill.id }}')">
+                        <i class="fas fa-dollar-sign"></i> Review Rate
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if bills.has_other_pages %}
+<nav aria-label="Queue pagination">
+    <ul class="pagination justify-content-center">
+        {% if bills.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1">&laquo; First</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ bills.previous_page_number }}">Previous</a>
+        </li>
+        {% endif %}
+        
+        <li class="page-item active">
+            <span class="page-link">
+                Page {{ bills.number }} of {{ bills.paginator.num_pages }}
+            </span>
+        </li>
+        
+        {% if bills.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ bills.next_page_number }}">Next</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ bills.paginator.num_pages }}">Last &raquo;</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No bills in {{ queue_type|lower }} queue</h4>
+                <p class="text-muted">All bills have been processed or no bills match the current criteria.</p>
+                <a href="{% url 'billing:dashboard' %}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function refreshQueue() {
+    location.reload();
+}
+
+function validateBill(billId) {
+    if (confirm('Are you sure you want to validate this bill? This will change the status to VALID and action to TO MAP.')) {
+        // Create a form to submit the validation
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "billing:validate_bill" "PLACEHOLDER" %}'.replace('PLACEHOLDER', billId);
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function mapBill(billId) {
+    // TODO: Implement mapping logic
+    alert('Mapping functionality will be implemented for bill: ' + billId);
+}
+
+function correctBill(billId) {
+    // TODO: Implement correction logic
+    alert('Correction functionality will be implemented for bill: ' + billId);
+}
+
+function reviewRate(billId) {
+    if (confirm('Are you sure you want to review the rate for this bill? This will change the action to TO REVIEW.')) {
+        // Create a form to submit the rate review
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "billing:review_rate" "PLACEHOLDER" %}'.replace('PLACEHOLDER', billId);
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

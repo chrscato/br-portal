@@ -1,0 +1,296 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Edit Order Provider Info - Bill {{ bill.id }} - Clarity Dx Bill Review Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-user-md"></i> Edit Order Provider Information</h2>
+                <p class="text-muted">Edit order provider details for Bill {{ bill.id }}</p>
+            </div>
+            <div>
+                <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Bill Detail
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Order Provider Information</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <!-- Basic Information -->
+                    <h6 class="mb-3"><i class="fas fa-info-circle"></i> Basic Information</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Provider Name</label>
+                                <input type="text" class="form-control" id="name" name="name" 
+                                       value="{{ order_provider.name|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="npi" class="form-label">NPI</label>
+                                <input type="text" class="form-control" id="npi" name="npi" 
+                                       value="{{ order_provider.npi|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="tin" class="form-label">TIN</label>
+                                <input type="text" class="form-control" id="tin" name="tin" 
+                                       value="{{ order_provider.tin|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="provider_type" class="form-label">Provider Type</label>
+                                <input type="text" class="form-control" id="provider_type" name="provider_type" 
+                                       value="{{ order_provider.provider_type|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="provider_status" class="form-label">Provider Status</label>
+                                <input type="text" class="form-control" id="provider_status" name="provider_status" 
+                                       value="{{ order_provider.provider_status|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="provider_network" class="form-label">Provider Network</label>
+                                <input type="text" class="form-control" id="provider_network" name="provider_network" 
+                                       value="{{ order_provider.provider_network|default:'' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="address_line_1" class="form-label">Address Line 1</label>
+                                <input type="text" class="form-control" id="address_line_1" name="address_line_1" 
+                                       value="{{ order_provider.address_line_1|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="address_line_2" class="form-label">Address Line 2</label>
+                                <input type="text" class="form-control" id="address_line_2" name="address_line_2" 
+                                       value="{{ order_provider.address_line_2|default:'' }}">
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="city" class="form-label">City</label>
+                                        <input type="text" class="form-control" id="city" name="city" 
+                                               value="{{ order_provider.city|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="state" class="form-label">State</label>
+                                        <input type="text" class="form-control" id="state" name="state" 
+                                               value="{{ order_provider.state|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="postal_code" class="form-label">Postal Code</label>
+                                        <input type="text" class="form-control" id="postal_code" name="postal_code" 
+                                               value="{{ order_provider.postal_code|default:'' }}">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="phone" class="form-label">Phone</label>
+                                <input type="text" class="form-control" id="phone" name="phone" 
+                                       value="{{ order_provider.phone|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ order_provider.email|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="website" class="form-label">Website</label>
+                                <input type="url" class="form-control" id="website" name="website" 
+                                       value="{{ order_provider.website|default:'' }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Location Information -->
+                    <hr>
+                    <h6 class="mb-3"><i class="fas fa-map-marker-alt"></i> Location Information</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="latitude" class="form-label">Latitude</label>
+                                <input type="text" class="form-control" id="latitude" name="latitude" 
+                                       value="{{ order_provider.latitude|default:'' }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="longitude" class="form-label">Longitude</label>
+                                <input type="text" class="form-control" id="longitude" name="longitude" 
+                                       value="{{ order_provider.longitude|default:'' }}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Billing Address Information -->
+                    <hr>
+                    <h6 class="mb-3"><i class="fas fa-credit-card"></i> Billing Address Information</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="billing_name" class="form-label">Billing Name</label>
+                                <input type="text" class="form-control" id="billing_name" name="billing_name" 
+                                       value="{{ order_provider.billing_name|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="billing_address_1" class="form-label">Billing Address 1</label>
+                                <input type="text" class="form-control" id="billing_address_1" name="billing_address_1" 
+                                       value="{{ order_provider.billing_address_1|default:'' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="billing_address_2" class="form-label">Billing Address 2</label>
+                                <input type="text" class="form-control" id="billing_address_2" name="billing_address_2" 
+                                       value="{{ order_provider.billing_address_2|default:'' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="billing_address_city" class="form-label">Billing City</label>
+                                <input type="text" class="form-control" id="billing_address_city" name="billing_address_city" 
+                                       value="{{ order_provider.billing_address_city|default:'' }}">
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="billing_address_state" class="form-label">Billing State</label>
+                                        <input type="text" class="form-control" id="billing_address_state" name="billing_address_state" 
+                                               value="{{ order_provider.billing_address_state|default:'' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="billing_address_postal_code" class="form-label">Billing Postal Code</label>
+                                        <input type="text" class="form-control" id="billing_address_postal_code" name="billing_address_postal_code" 
+                                               value="{{ order_provider.billing_address_postal_code|default:'' }}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Service Capabilities -->
+                    <hr>
+                    <h6 class="mb-3"><i class="fas fa-cogs"></i> Service Capabilities</h6>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="ct" class="form-label">CT</label>
+                                <select class="form-select" id="ct" name="ct">
+                                    <option value="">Not Available</option>
+                                    <option value="Yes" {% if order_provider.ct == 'Yes' %}selected{% endif %}>Available</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="mri_1_5t" class="form-label">MRI 1.5T</label>
+                                <select class="form-select" id="mri_1_5t" name="mri_1_5t">
+                                    <option value="">Not Available</option>
+                                    <option value="Yes" {% if order_provider.mri_1_5t == 'Yes' %}selected{% endif %}>Available</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="mri_3_0t" class="form-label">MRI 3.0T</label>
+                                <select class="form-select" id="mri_3_0t" name="mri_3_0t">
+                                    <option value="">Not Available</option>
+                                    <option value="Yes" {% if order_provider.mri_3_0t == 'Yes' %}selected{% endif %}>Available</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="mri_open" class="form-label">MRI Open</label>
+                                <select class="form-select" id="mri_open" name="mri_open">
+                                    <option value="">Not Available</option>
+                                    <option value="Yes" {% if order_provider.mri_open == 'Yes' %}selected{% endif %}>Available</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="xray" class="form-label">X-Ray</label>
+                                <select class="form-select" id="xray" name="xray">
+                                    <option value="">Not Available</option>
+                                    <option value="Yes" {% if order_provider.xray == 'Yes' %}selected{% endif %}>Available</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="mammo" class="form-label">Mammography</label>
+                                <select class="form-select" id="mammo" name="mammo">
+                                    <option value="">Not Available</option>
+                                    <option value="Yes" {% if order_provider.mammo == 'Yes' %}selected{% endif %}>Available</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="echo" class="form-label">Echocardiogram</label>
+                                <select class="form-select" id="echo" name="echo">
+                                    <option value="">Not Available</option>
+                                    <option value="Yes" {% if order_provider.echo == 'Yes' %}selected{% endif %}>Available</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="ekg" class="form-label">EKG</label>
+                                <select class="form-select" id="ekg" name="ekg">
+                                    <option value="">Not Available</option>
+                                    <option value="Yes" {% if order_provider.ekg == 'Yes' %}selected{% endif %}>Available</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="bone_density" class="form-label">Bone Density</label>
+                                <select class="form-select" id="bone_density" name="bone_density">
+                                    <option value="">Not Available</option>
+                                    <option value="Yes" {% if order_provider.bone_density == 'Yes' %}selected{% endif %}>Available</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Changes
+                        </button>
+                        <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,281 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Dashboard - Clarity Dx Bill Review Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
+                <p class="text-muted">Overview of bill processing status and queue management</p>
+            </div>
+            <div>
+                <a href="{% url 'billing:order_search' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-search"></i> Search Orders
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-danger">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ unpaid_bills_count }}</h4>
+                        <p class="mb-0">Unpaid Bills</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ paid_bills_count }}</h4>
+                        <p class="mb-0">Paid Bills</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ validation_count }}</h4>
+                        <p class="mb-0">Validation Queue</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-search fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ mapping_count }}</h4>
+                        <p class="mb-0">Mapping Queue</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-map-marker-alt fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Queue Management Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card queue-card h-100">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="fas fa-search"></i> Validation Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Bills requiring validation (Status: INVALID)</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="badge bg-warning text-dark">{{ validation_count }} bills</span>
+                    <a href="{% url 'billing:validation_queue' %}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-arrow-right"></i> Process
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card queue-card h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-map-marker-alt"></i> Mapping Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Bills requiring provider mapping (Status: UNMAPPED)</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="badge bg-info">{{ mapping_count }} bills</span>
+                    <a href="{% url 'billing:mapping_queue' %}" class="btn btn-info btn-sm">
+                        <i class="fas fa-arrow-right"></i> Process
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card queue-card h-100">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0"><i class="fas fa-flag"></i> Correction Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Bills requiring correction (Status: REVIEW_FLAG, FLAGGED)</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="badge bg-danger">{{ correction_count }} bills</span>
+                    <a href="{% url 'billing:correction_queue' %}" class="btn btn-danger btn-sm">
+                        <i class="fas fa-arrow-right"></i> Process
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card queue-card h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-dollar-sign"></i> Rate Correction Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Bills requiring rate review (Action: review_rate, review_rates)</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="badge bg-success">{{ rate_correction_count }} bills</span>
+                    <a href="{% url 'billing:rate_correction_queue' %}" class="btn btn-success btn-sm">
+                        <i class="fas fa-arrow-right"></i> Process
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-bar"></i> Unpaid Bills Status Distribution</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="unpaidChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-bar"></i> Paid Bills Status Distribution</h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="paidChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{{ unpaid_status_dist|json_script:"unpaid-data" }}
+{{ paid_status_dist|json_script:"paid-data" }}
+<script>
+// Unpaid Bills Chart
+const unpaidCtx = document.getElementById('unpaidChart').getContext('2d');
+const unpaidData = JSON.parse(document.getElementById('unpaid-data').textContent);
+
+new Chart(unpaidCtx, {
+    type: 'bar',
+    data: {
+        labels: unpaidData.map(item => item.status),
+        datasets: [{
+            label: 'Count',
+            data: unpaidData.map(item => item.count),
+            backgroundColor: [
+                '#dc3545', // ESCALATE - red
+                '#ffc107', // MAPPED - yellow
+                '#28a745', // REVIEWED - green
+                '#6c757d', // Others - gray
+            ],
+            borderColor: [
+                '#dc3545',
+                '#ffc107',
+                '#28a745',
+                '#6c757d',
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+
+// Paid Bills Chart
+const paidCtx = document.getElementById('paidChart').getContext('2d');
+const paidData = JSON.parse(document.getElementById('paid-data').textContent);
+
+new Chart(paidCtx, {
+    type: 'bar',
+    data: {
+        labels: paidData.map(item => item.status),
+        datasets: [{
+            label: 'Count',
+            data: paidData.map(item => item.count),
+            backgroundColor: [
+                '#28a745', // REVIEWED - green
+                '#6c757d', // Others - gray
+            ],
+            borderColor: [
+                '#28a745',
+                '#6c757d',
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

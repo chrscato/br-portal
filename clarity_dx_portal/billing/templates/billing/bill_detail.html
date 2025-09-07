@@ -1,0 +1,877 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Bill {{ bill.id }} - Clarity Dx Bill Review Portal{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-file-invoice"></i> Bill {{ bill.id }}</h2>
+                <p class="text-muted">Detailed view of provider bill and related information</p>
+            </div>
+            <div>
+                <a href="{% url 'billing:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Queue Navigation -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h6 class="card-title"><i class="fas fa-sitemap"></i> Queue Navigation</h6>
+                <div class="d-flex flex-wrap gap-2">
+                    {% if bill.status == 'INVALID' %}
+                    <a href="{% url 'billing:validation_queue' %}" class="btn btn-outline-danger">
+                        <i class="fas fa-exclamation-triangle"></i> Back to Validation Queue
+                    </a>
+                    {% elif bill.status in 'UNMAPPED,VALID' %}
+                    <a href="{% url 'billing:mapping_queue' %}" class="btn btn-outline-info">
+                        <i class="fas fa-map-marker-alt"></i> Back to Mapping Queue
+                    </a>
+                    {% elif bill.status in 'REVIEW_FLAG,FLAGGED' %}
+                    <a href="{% url 'billing:correction_queue' %}" class="btn btn-outline-warning">
+                        <i class="fas fa-flag"></i> Back to Correction Queue
+                    </a>
+                    {% endif %}
+                    
+                    <!-- Always show all queue links for reference -->
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-list"></i> All Queues
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'billing:validation_queue' %}">
+                                <i class="fas fa-exclamation-triangle text-danger"></i> Validation Queue
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'billing:mapping_queue' %}">
+                                <i class="fas fa-map-marker-alt text-info"></i> Mapping Queue
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'billing:correction_queue' %}">
+                                <i class="fas fa-flag text-warning"></i> Correction Queue
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'billing:rate_correction_queue' %}">
+                                <i class="fas fa-dollar-sign text-success"></i> Rate Correction Queue
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bill Status Card -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="mb-0">Bill Status</h5>
+                    </div>
+                    <div class="col-auto">
+                        <span class="badge status-badge bg-{% if bill.status == 'ESCALATE' %}danger{% elif bill.status == 'MAPPED' %}warning{% elif bill.status == 'REVIEWED' %}success{% elif bill.status == 'VALID' %}info{% elif bill.status == 'INVALID' %}danger{% else %}secondary{% endif %} fs-6">
+                            {{ bill.status }}
+                        </span>
+                    </div>
+                    <div class="col-auto">
+                        <a href="{% url 'billing:edit_bill' bill.id %}" 
+                           class="btn btn-outline-warning btn-sm me-2">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <a href="{% url 'billing:bill_pdf' bill.id %}" 
+                           class="btn btn-outline-primary btn-sm" 
+                           target="_blank"
+                           rel="noopener noreferrer">
+                            <i class="fas fa-file-pdf"></i> View PDF
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Action Required:</strong> {{ bill.action|title }}</p>
+                        <p><strong>Bill Paid:</strong> 
+                            {% if bill.is_paid %}
+                                <span class="badge bg-success">Yes</span>
+                            {% else %}
+                                <span class="badge bg-danger">No</span>
+                            {% endif %}
+                        </p>
+                        <p><strong>Total Charge:</strong> 
+                            {% if bill.total_charge %}
+                                ${{ bill.total_charge|floatformat:2 }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Created:</strong> 
+                            {% if bill.created_at %}
+                                {{ bill.created_at|date:"M d, Y H:i" }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </p>
+                        <p><strong>Updated:</strong> 
+                            {% if bill.updated_at %}
+                                {{ bill.updated_at|date:"M d, Y H:i" }}
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </p>
+                        <p><strong>Uploaded By:</strong> {{ bill.uploaded_by|default:"N/A" }}</p>
+                    </div>
+                </div>
+                {% if bill.last_error %}
+                <div class="alert alert-danger mt-3">
+                    <strong>Last Error:</strong> {{ bill.last_error }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Patient Information -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-user"></i> Patient Information</h5>
+                    <a href="{% url 'billing:edit_patient_info' bill.id %}" 
+                       class="btn btn-outline-warning btn-sm">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <p><strong>Name:</strong> {{ bill.patient_name|default:"N/A" }}</p>
+                <p><strong>Date of Birth:</strong> {{ bill.patient_dob|default:"N/A" }}</p>
+                <p><strong>ZIP Code:</strong> {{ bill.patient_zip|default:"N/A" }}</p>
+                <p><strong>Account Number:</strong> {{ bill.patient_account_no|default:"N/A" }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-hospital"></i> Provider Information</h5>
+                    <a href="{% url 'billing:edit_provider_info' bill.id %}" 
+                       class="btn btn-outline-warning btn-sm">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <p><strong>Provider Name:</strong> {{ bill.billing_provider_name|default:"N/A" }}</p>
+                <p><strong>TIN:</strong> {{ bill.billing_provider_tin|default:"N/A" }}</p>
+                <p><strong>NPI:</strong> {{ bill.billing_provider_npi|default:"N/A" }}</p>
+                <p><strong>Address:</strong> {{ bill.billing_provider_address|default:"N/A" }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Order Provider Information -->
+{% if order_provider %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-user-md"></i> Order Provider Information</h5>
+                    <a href="{% url 'billing:edit_order_provider' bill.id %}" 
+                       class="btn btn-outline-warning btn-sm">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Provider Name:</strong> {{ order_provider.name|default:"N/A" }}</p>
+                        <p><strong>NPI:</strong> {{ order_provider.npi|default:"N/A" }}</p>
+                        <p><strong>TIN:</strong> {{ order_provider.tin|default:"N/A" }}</p>
+                        <p><strong>Provider Type:</strong> {{ order_provider.provider_type|default:"N/A" }}</p>
+                        <p><strong>Provider Status:</strong> {{ order_provider.provider_status|default:"N/A" }}</p>
+                        <p><strong>Provider Network:</strong> {{ order_provider.provider_network|default:"N/A" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Address:</strong> {{ order_provider.address_line_1|default:"N/A" }}</p>
+                        {% if order_provider.address_line_2 %}
+                        <p><strong>Address Line 2:</strong> {{ order_provider.address_line_2 }}</p>
+                        {% endif %}
+                        <p><strong>City:</strong> {{ order_provider.city|default:"N/A" }}</p>
+                        <p><strong>State:</strong> {{ order_provider.state|default:"N/A" }}</p>
+                        <p><strong>Postal Code:</strong> {{ order_provider.postal_code|default:"N/A" }}</p>
+                        <p><strong>Phone:</strong> {{ order_provider.phone|default:"N/A" }}</p>
+                        {% if order_provider.email %}
+                        <p><strong>Email:</strong> {{ order_provider.email }}</p>
+                        {% endif %}
+                        {% if order_provider.website %}
+                        <p><strong>Website:</strong> <a href="{{ order_provider.website }}" target="_blank">{{ order_provider.website }}</a></p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Billing Address Information -->
+                <hr>
+                <h6><i class="fas fa-credit-card"></i> Billing Address Information</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Billing Name:</strong> {{ order_provider.billing_name|default:"N/A" }}</p>
+                        <p><strong>Billing Address 1:</strong> {{ order_provider.billing_address_1|default:"N/A" }}</p>
+                        {% if order_provider.billing_address_2 %}
+                        <p><strong>Billing Address 2:</strong> {{ order_provider.billing_address_2 }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Billing City:</strong> {{ order_provider.billing_address_city|default:"N/A" }}</p>
+                        <p><strong>Billing State:</strong> {{ order_provider.billing_address_state|default:"N/A" }}</p>
+                        <p><strong>Billing Postal Code:</strong> {{ order_provider.billing_address_postal_code|default:"N/A" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Bill Line Items -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Bill Line Items</h5>
+                    <a href="{% url 'billing:add_bill_line_item' bill.id %}" class="btn btn-success btn-sm">
+                        <i class="fas fa-plus"></i> Add Line Item
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if line_items %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>CPT Code</th>
+                                <th>Modifier</th>
+                                <th>Units</th>
+                                <th>Charge Amount</th>
+                                <th>Allowed Amount</th>
+                                <th>Decision</th>
+                                <th>Date of Service</th>
+                                <th>Place of Service</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in line_items %}
+                            <tr>
+                                <td><code>{{ item.cpt_code|default:"N/A" }}</code></td>
+                                <td>{{ item.modifier|default:"N/A" }}</td>
+                                <td>{{ item.units|default:"N/A" }}</td>
+                                <td>
+                                    {% if item.charge_amount %}
+                                        ${{ item.charge_amount|floatformat:2 }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.allowed_amount %}
+                                        ${{ item.allowed_amount|floatformat:2 }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-{% if item.decision == 'APPROVED' %}success{% elif item.decision == 'DENIED' %}danger{% else %}warning{% endif %}">
+                                        {{ item.decision|default:"Pending" }}
+                                    </span>
+                                </td>
+                                <td>{{ item.date_of_service|default:"N/A" }}</td>
+                                <td>{{ item.place_of_service|default:"N/A" }}</td>
+                                <td>
+                                    {% if item.id %}
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'billing:edit_bill_line_item' bill.id item.id %}" 
+                                           class="btn btn-outline-warning btn-sm">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </a>
+                                        <a href="{% url 'billing:delete_bill_line_item' bill.id item.id %}" 
+                                           class="btn btn-outline-danger btn-sm"
+                                           onclick="return confirm('Are you sure you want to delete this line item? This action cannot be undone.');">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </a>
+                                    </div>
+                                    {% else %}
+                                    <span class="text-muted">No ID</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted text-center">No line items found for this bill.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Apply Rate Panel -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-calculator"></i> Apply Rate</h5>
+                    <button class="btn btn-light btn-sm" onclick="applyRates('{{ bill.id }}')">
+                        <i class="fas fa-check"></i> Apply Rates
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if line_items_with_rates %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>CPT Code</th>
+                                <th>Modifier</th>
+                                <th>Provider TIN</th>
+                                <th>Rate</th>
+                                <th>Source</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item_data in line_items_with_rates %}
+                            <tr>
+                                <td><code>{{ item_data.cpt_code|default:"N/A" }}</code></td>
+                                <td>{{ item_data.modifier|default:"N/A" }}</td>
+                                <td>{{ item_data.provider_tin|default:"N/A" }}</td>
+                                <td>
+                                    {% if item_data.rate %}
+                                        <span class="badge bg-success">${{ item_data.rate }}</span>
+                                    {% else %}
+                                        <div class="input-group input-group-sm" style="width: 120px;">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" 
+                                                   class="form-control manual-rate-input" 
+                                                   data-line-item-id="{{ item_data.line_item.id }}"
+                                                   placeholder="0.00" 
+                                                   step="0.01" 
+                                                   min="0">
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item_data.rate_source == 'PPO' %}
+                                        <span class="badge bg-info">PPO</span>
+                                    {% elif item_data.rate_source == 'OTA' %}
+                                        <span class="badge bg-warning">OTA</span>
+                                    {% elif item_data.rate_source == 'MANUAL' %}
+                                        <span class="badge bg-primary">Manual</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">None</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item_data.rate %}
+                                        <i class="fas fa-check-circle text-success"></i> Found
+                                    {% else %}
+                                        <button class="btn btn-sm btn-outline-primary add-manual-rate" 
+                                                data-line-item-id="{{ item_data.line_item.id }}"
+                                                data-cpt-code="{{ item_data.cpt_code }}"
+                                                data-modifier="{{ item_data.modifier }}">
+                                            <i class="fas fa-plus"></i> Add Rate
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Rate Lookup Process:</h6>
+                            <ol class="mb-0">
+                                <li>Check for existing manual rates (allowed_amount field)</li>
+                                <li>Get provider TIN from associated order</li>
+                                <li>Clean TIN (remove spaces/dashes)</li>
+                                <li>Look up PPO rate using TIN + CPT + modifier</li>
+                                <li>If not found, try OTA lookup using Order ID + CPT + modifier</li>
+                                <li>If no rate found, you can add a manual rate using the input field</li>
+                            </ol>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert alert-success">
+                            <h6><i class="fas fa-calculator"></i> Total Rates:</h6>
+                            <h4 class="mb-0">${{ total_rates|floatformat:2 }}</h4>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <p class="text-muted text-center">No line items found for rate calculation.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Related Order Information -->
+{% if order %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-list"></i> Related Order Information</h5>
+                    <a href="{% url 'billing:edit_order_info' bill.id %}" 
+                       class="btn btn-outline-warning btn-sm">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Order ID:</strong> <code>{{ order.order_id }}</code></p>
+                        <p><strong>Patient Name:</strong> {{ order.patient_name|default:"N/A" }}</p>
+                        <p><strong>Patient Phone:</strong> {{ order.patient_phone|default:"N/A" }}</p>
+                        <p><strong>Referring Physician:</strong> {{ order.referring_physician|default:"N/A" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Assigning Company:</strong> {{ order.assigning_company|default:"N/A" }}</p>
+                        <p><strong>Claim Number:</strong> {{ order.claim_number|default:"N/A" }}</p>
+                        <p><strong>Order Type:</strong> {{ order.order_type|default:"N/A" }}</p>
+                        <p><strong>Jurisdiction State:</strong> {{ order.jurisdiction_state|default:"N/A" }}</p>
+                    </div>
+                </div>
+                
+                {% if order_line_items %}
+                <hr>
+                <h6>Order Line Items</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>CPT</th>
+                                <th>Description</th>
+                                <th>Charge</th>
+                                <th>Date of Service</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order_line_items %}
+                            <tr>
+                                <td><code>{{ item.cpt|default:"N/A" }}</code></td>
+                                <td>{{ item.description|default:"N/A" }}</td>
+                                <td>{{ item.charge|default:"N/A" }}</td>
+                                <td>{{ item.dos|default:"N/A" }}</td>
+                                <td>
+                                    {% if item.id %}
+                                    <a href="{% url 'billing:edit_order_line_item' bill.id item.id %}" 
+                                       class="btn btn-outline-warning btn-sm">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    {% else %}
+                                    <span class="text-muted">No ID</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Mapping Section (only for UNMAPPED and VALID bills) -->
+{% if bill.status == 'UNMAPPED' or bill.status == 'VALID' %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-map-marker-alt"></i> Map Bill to Order
+                    <button class="btn btn-sm btn-outline-primary float-end" type="button" data-bs-toggle="collapse" data-bs-target="#mappingSection" aria-expanded="true" aria-controls="mappingSection">
+                        <i class="fas fa-search"></i> Search Orders
+                    </button>
+                </h5>
+            </div>
+            <div class="collapse show" id="mappingSection">
+                <div class="card-body">
+                    <!-- Search Form -->
+                    <form method="get" class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label for="first_name" class="form-label">Patient First Name</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" 
+                                   value="{{ first_name }}" placeholder="Enter first name...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="last_name" class="form-label">Patient Last Name</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" 
+                                   value="{{ last_name }}" placeholder="Enter last name...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="dos_date" class="form-label">Date of Service</label>
+                            <input type="date" class="form-control" id="dos_date" name="dos_date" 
+                                   value="{{ dos_date }}">
+                            <small class="form-text text-muted">Searches ±60 days from this date</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Search Orders
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Search Results -->
+                    {% if search_results %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>First Name</th>
+                                <th>Last Name</th>
+                                <th>CPT Codes</th>
+                                <th>Date of Service</th>
+                                <th>Description</th>
+                                <th>Provider Billing Name</th>
+                                <th>Order ID</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in search_results %}
+                            <tr>
+                                <td>
+                                    <strong>{{ result.patient_first_name|default:"N/A" }}</strong>
+                                    {% if result.line_item_count > 1 %}
+                                        <br><small class="text-muted">{{ result.line_item_count }} line items</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ result.patient_last_name|default:"N/A" }}</strong>
+                                </td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        {% for cpt in result.cpt_list %}
+                                            {% if result.cpt_list|length > 1 %}
+                                                <code class="badge bg-primary">{{ cpt }}</code>
+                                            {% else %}
+                                                <code class="badge bg-danger">{{ cpt }}</code>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </td>
+                                <td>{{ result.dos }}</td>
+                                <td>
+                                    {% if result.line_item_count > 1 %}
+                                        <div class="text-truncate" style="max-width: 200px;" title="{{ result.descriptions }}">
+                                            {{ result.descriptions }}
+                                        </div>
+                                    {% else %}
+                                        {{ result.descriptions }}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ result.provider_billing_name }}</strong>
+                                </td>
+                                <td><code>{{ result.order_id }}</code></td>
+                                <td>
+                                    <button class="btn btn-sm btn-success" 
+                                            onclick="mapToBill('{{ result.order_id }}', '{{ result.patient_name }}', '{{ result.cpt_codes }}', '{{ result.dos }}')">
+                                        <i class="fas fa-link"></i> Map to This Bill
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    {% if search_results.has_other_pages %}
+                    <nav aria-label="Search results pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if search_results.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if last_name %}last_name={{ last_name }}&{% endif %}{% if dos_date %}dos_date={{ dos_date }}&{% endif %}page=1">&laquo; First</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if last_name %}last_name={{ last_name }}&{% endif %}{% if dos_date %}dos_date={{ dos_date }}&{% endif %}page={{ search_results.previous_page_number }}">Previous</a>
+                            </li>
+                            {% endif %}
+                            
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ search_results.number }} of {{ search_results.paginator.num_pages }}
+                                </span>
+                            </li>
+                            
+                            {% if search_results.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if last_name %}last_name={{ last_name }}&{% endif %}{% if dos_date %}dos_date={{ dos_date }}&{% endif %}page={{ search_results.next_page_number }}">Next</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?{% if last_name %}last_name={{ last_name }}&{% endif %}{% if dos_date %}dos_date={{ dos_date }}&{% endif %}page={{ search_results.paginator.num_pages }}">Last &raquo;</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    {% elif last_name or dos_date %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">No matching orders found</h4>
+                        <p class="text-muted">Try adjusting your search criteria.</p>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-info-circle fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">Search for Orders to Map</h4>
+                        <p class="text-muted">Use the search form above to find matching orders for this bill.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Action Buttons -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex gap-2">
+                    {% if bill.status == 'INVALID' %}
+                    <button class="btn btn-success" onclick="validateBill('{{ bill.id }}')">
+                        <i class="fas fa-check"></i> Validate Bill
+                    </button>
+                    {% elif bill.status == 'UNMAPPED' or bill.status == 'VALID' %}
+                    <button class="btn btn-info" onclick="toggleMappingSection()">
+                        <i class="fas fa-map-marker-alt"></i> Map to Order
+                    </button>
+                    {% elif bill.status in 'REVIEW_FLAG,FLAGGED' %}
+                    <button class="btn btn-warning" onclick="correctBill('{{ bill.id }}')">
+                        <i class="fas fa-edit"></i> Correct Bill
+                    </button>
+                    {% endif %}
+                    
+                    <button class="btn btn-primary" onclick="updateStatus('{{ bill.id }}')">
+                        <i class="fas fa-sync-alt"></i> Update Status
+                    </button>
+                    
+                    <button class="btn btn-secondary" onclick="printBill('{{ bill.id }}')">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function validateBill(billId) {
+    if (confirm('Are you sure you want to validate this bill? This will change the status to VALID and action to TO MAP.')) {
+        // Create a form to submit the validation
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "billing:validate_bill" "PLACEHOLDER" %}'.replace('PLACEHOLDER', billId);
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function toggleMappingSection() {
+    const mappingSection = document.getElementById('mappingSection');
+    const bsCollapse = new bootstrap.Collapse(mappingSection, {
+        toggle: true
+    });
+}
+
+function mapToBill(orderId, patientName, cpt, dos) {
+    if (confirm(`Are you sure you want to map this bill to Order ${orderId}?\n\nPatient: ${patientName}\nCPT: ${cpt}\nDOS: ${dos}`)) {
+        // Create a form to submit the mapping
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "billing:map_bill" %}';
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Add bill ID
+        const billInput = document.createElement('input');
+        billInput.type = 'hidden';
+        billInput.name = 'bill_id';
+        billInput.value = '{{ bill.id }}';
+        form.appendChild(billInput);
+        
+        // Add order ID
+        const orderInput = document.createElement('input');
+        orderInput.type = 'hidden';
+        orderInput.name = 'order_id';
+        orderInput.value = orderId;
+        form.appendChild(orderInput);
+        
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function correctBill(billId) {
+    // TODO: Implement correction logic
+    alert('Correction functionality will be implemented for bill: ' + billId);
+}
+
+function updateStatus(billId) {
+    // TODO: Implement status update logic
+    alert('Status update functionality will be implemented for bill: ' + billId);
+}
+
+function printBill(billId) {
+    window.print();
+}
+
+function applyRates(billId) {
+    if (confirm('Are you sure you want to apply rates to this bill? This will change the status to REVIEWED and action to TO REVIEW.')) {
+        // Create a form to submit the rate application
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "billing:apply_rates" "PLACEHOLDER" %}'.replace('PLACEHOLDER', billId);
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Manual rate functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle manual rate input
+    document.querySelectorAll('.add-manual-rate').forEach(button => {
+        button.addEventListener('click', function() {
+            const lineItemId = this.getAttribute('data-line-item-id');
+            const cptCode = this.getAttribute('data-cpt-code');
+            const modifier = this.getAttribute('data-modifier');
+            const input = document.querySelector(`input[data-line-item-id="${lineItemId}"]`);
+            
+            if (input && input.value && parseFloat(input.value) > 0) {
+                const rate = parseFloat(input.value);
+                
+                if (confirm(`Add manual rate of $${rate.toFixed(2)} for CPT ${cptCode}${modifier ? ' with modifier ' + modifier : ''}?`)) {
+                    addManualRate(lineItemId, rate);
+                }
+            } else {
+                alert('Please enter a valid rate amount.');
+            }
+        });
+    });
+    
+    // Handle Enter key in rate input fields
+    document.querySelectorAll('.manual-rate-input').forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const lineItemId = this.getAttribute('data-line-item-id');
+                const button = document.querySelector(`button[data-line-item-id="${lineItemId}"]`);
+                if (button) {
+                    button.click();
+                }
+            }
+        });
+    });
+});
+
+function addManualRate(lineItemId, rate) {
+    // Create a form to submit the manual rate
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{% url "billing:add_manual_rate" "PLACEHOLDER" %}'.replace('PLACEHOLDER', '{{ bill.id }}');
+    
+    // Add CSRF token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = csrfToken;
+    form.appendChild(csrfInput);
+    
+    // Add line item ID
+    const lineItemInput = document.createElement('input');
+    lineItemInput.type = 'hidden';
+    lineItemInput.name = 'line_item_id';
+    lineItemInput.value = lineItemId;
+    form.appendChild(lineItemInput);
+    
+    // Add rate
+    const rateInput = document.createElement('input');
+    rateInput.type = 'hidden';
+    rateInput.name = 'rate';
+    rateInput.value = rate;
+    form.appendChild(rateInput);
+    
+    // Submit the form
+    document.body.appendChild(form);
+    form.submit();
+}
+</script>
+{% endblock %}
