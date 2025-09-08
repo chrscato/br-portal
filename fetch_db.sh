@@ -15,10 +15,14 @@ else
 fi
 
 # Download the database from remote server
-scp root@159.223.104.254:/srv/br-portal/monolith.db ./monolith.db
+# Use a temporary filename to avoid issues with locked files
+scp root@159.223.104.254:/srv/br-portal/monolith.db ./monolith_new.db
 
 if [ $? -eq 0 ]; then
-    echo "Successfully downloaded monolith.db"
+    # Remove old database and rename new one
+    rm -f ./monolith.db
+    mv ./monolith_new.db ./monolith.db
+    echo "Successfully downloaded and replaced monolith.db"
 else
     echo "Failed to download monolith.db"
     exit 1

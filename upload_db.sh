@@ -29,6 +29,26 @@ scp ./monolith.db root@159.223.104.254:/srv/br-portal/monolith.db
 
 if [ $? -eq 0 ]; then
     echo "Successfully uploaded monolith.db"
+    
+    # Restart Django application to use the new database
+    echo "Restarting Django application on VM..."
+    ssh root@159.223.104.254 "
+        # Try systemctl first
+        systemctl restart br-portal 2>/dev/null || {
+            # If systemctl fails, try tmux session restart
+            tmux send-keys -t br_portal C-c 2>/dev/null || true
+            sleep 2
+            tmux send-keys -t br_portal 'python manage.py runserver 0.0.0.0:8000' Enter 2>/dev/null || {
+                # Fallback to killing processes
+                pkill -f 'python.*manage.py' || pkill -f 'uvicorn' || true
+            }
+        }
+    "
+    
+    # Wait a moment for the service to restart
+    sleep 3
+    
+    echo "Database upload and application restart completed"
 else
     echo "Failed to upload monolith.db"
     exit 1
