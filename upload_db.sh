@@ -8,6 +8,9 @@ echo "Creating backup of current VM database..."
 timestamp=$(date +"%Y%m%d_%H%M%S")
 backup_path="./db_backups/vm_backups/monolith_vm_backup_${timestamp}.db"
 
+# Create the backup directory if it doesn't exist
+mkdir -p "./db_backups/vm_backups"
+
 # Download current VM database as backup
 scp root@159.223.104.254:/srv/br-portal/monolith.db "${backup_path}"
 
@@ -36,9 +39,9 @@ if [ $? -eq 0 ]; then
         # Try systemctl first
         systemctl restart br-portal 2>/dev/null || {
             # If systemctl fails, try tmux session restart
-            tmux send-keys -t br_portal C-c 2>/dev/null || true
+            tmux send-keys -t billreview_ngrok C-c 2>/dev/null || true
             sleep 2
-            tmux send-keys -t br_portal 'python manage.py runserver 0.0.0.0:8000' Enter 2>/dev/null || {
+            tmux send-keys -t billreview_ngrok 'python manage.py runserver 0.0.0.0:8000' Enter 2>/dev/null || {
                 # Fallback to killing processes
                 pkill -f 'python.*manage.py' || pkill -f 'uvicorn' || true
             }
