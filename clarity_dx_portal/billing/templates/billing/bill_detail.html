@@ -107,6 +107,10 @@
                     <a href="{% url 'billing:validation_queue' %}" class="btn btn-outline-danger">
                         <i class="fas fa-exclamation-triangle"></i> Back to Validation Queue
                     </a>
+                    {% elif bill.status == 'MAPPED' %}
+                    <a href="{% url 'billing:filemaker_mapping_queue' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-database"></i> Back to FileMaker Mapping Queue
+                    </a>
                     {% elif bill.status in 'UNMAPPED,VALID' %}
                     <a href="{% url 'billing:mapping_queue' %}" class="btn btn-outline-info">
                         <i class="fas fa-map-marker-alt"></i> Back to Mapping Queue
@@ -128,6 +132,21 @@
                             </a></li>
                             <li><a class="dropdown-item" href="{% url 'billing:mapping_queue' %}">
                                 <i class="fas fa-map-marker-alt text-info"></i> Mapping Queue
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'billing:filemaker_mapping_queue' %}">
+                                <i class="fas fa-database text-primary"></i> FileMaker Mapping Queue
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'billing:worker_assignment' %}">
+                                <i class="fas fa-users text-danger"></i> Worker Assignment
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'billing:worker_queue' 'Emma' %}">
+                                <i class="fas fa-user text-info"></i> Emma Queue
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'billing:worker_queue' 'Nicole' %}">
+                                <i class="fas fa-user text-warning"></i> Nicole Queue
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'billing:worker_queue' 'Tony' %}">
+                                <i class="fas fa-user text-secondary"></i> Tony Queue
                             </a></li>
                             <li><a class="dropdown-item" href="{% url 'billing:correction_queue' %}">
                                 <i class="fas fa-flag text-warning"></i> Correction Queue
@@ -468,13 +487,19 @@
         <div class="card">
             <div class="card-header bg-primary text-white">
                 <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-calculator"></i> Apply Rate</h5>
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-link text-white p-0 me-2" type="button" data-bs-toggle="collapse" data-bs-target="#applyRateCollapse" aria-expanded="false" aria-controls="applyRateCollapse">
+                            <i class="fas fa-chevron-down" id="applyRateChevron"></i>
+                        </button>
+                        <h5 class="mb-0"><i class="fas fa-calculator"></i> Apply Rate</h5>
+                    </div>
                     <button class="btn btn-light btn-sm" onclick="applyRates('{{ bill.id }}')">
                         <i class="fas fa-check"></i> Apply Rates
                     </button>
                 </div>
             </div>
-            <div class="card-body">
+            <div class="collapse" id="applyRateCollapse">
+                <div class="card-body">
                 {% if line_items_with_rates %}
                 <div class="table-responsive">
                     <table class="table table-hover">
@@ -561,6 +586,7 @@
                 {% else %}
                 <p class="text-muted text-center">No line items found for rate calculation.</p>
                 {% endif %}
+                </div>
             </div>
         </div>
     </div>
@@ -804,6 +830,13 @@
             <div class="card-body">
                 <div class="d-flex gap-2">
                     {% if bill.status == 'INVALID' %}
+                    <button class="btn btn-warning" onclick="runSecondPass('{{ bill.id }}')">
+                        <i class="fas fa-redo"></i> Second Pass
+                    </button>
+                    <button class="btn btn-success" onclick="validateBill('{{ bill.id }}')">
+                        <i class="fas fa-check"></i> Validate Bill
+                    </button>
+                    {% elif bill.status == 'INVALID_2' %}
                     <button class="btn btn-success" onclick="validateBill('{{ bill.id }}')">
                         <i class="fas fa-check"></i> Validate Bill
                     </button>
@@ -821,6 +854,10 @@
                     <button class="btn btn-success" onclick="approveForRate('{{ bill.id }}')">
                         <i class="fas fa-check-circle"></i> Approve for Rate
                     </button>
+                    <button class="btn btn-success" onclick="approveForBillReview('{{ bill.id }}')">
+                        <i class="fas fa-check-circle"></i> Approve for Bill Review
+                    </button>
+                    
                     <button class="btn btn-primary" onclick="approveForPayment('{{ bill.id }}')">
                         <i class="fas fa-credit-card"></i> Approve for Payment
                     </button>
@@ -887,6 +924,34 @@
 
 {% block extra_js %}
 <script>
+function runSecondPass(billId) {
+    if (confirm('Are you sure you want to run second pass processing on this bill? This will attempt to re-extract data using enhanced AI processing and may take a few minutes.')) {
+        // Create a form to submit the second pass processing
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "billing:process_second_pass" %}';
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Add limit to process only this bill (we'll need to modify the view to handle this)
+        const limitInput = document.createElement('input');
+        limitInput.type = 'hidden';
+        limitInput.name = 'bill_id';
+        limitInput.value = billId;
+        form.appendChild(limitInput);
+        
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
 function validateBill(billId) {
     if (confirm('Are you sure you want to validate this bill? This will change the status to VALID and action to TO MAP.')) {
         // Create a form to submit the validation
@@ -1075,6 +1140,27 @@ function approveForRate(billId) {
     }
 }
 
+function approveForBillReview(billId) {
+    if (confirm('Are you sure you want to approve this bill for bill review?\n\nThis confirms that:\n• The bill line items are accurate\n• This is correctly mapped to a FileMaker order\n\nThis will change the status to APPROVED_FOR_BR.')) {
+        // Create a form to submit the approval
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "billing:approve_for_bill_review" "PLACEHOLDER" %}'.replace('PLACEHOLDER', billId);
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+        form.appendChild(csrfInput);
+        
+        // Submit the form
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
 function approveForPayment(billId) {
     if (confirm('Are you sure you want to approve this bill for payment? This will change the status to REVIEWED, action to apply_rate, and set all line item decisions to APPROVED.')) {
         // Create a form to submit the approval
@@ -1095,5 +1181,23 @@ function approveForPayment(billId) {
         form.submit();
     }
 }
+
+// Handle Apply Rate collapse chevron rotation
+document.addEventListener('DOMContentLoaded', function() {
+    const applyRateCollapse = document.getElementById('applyRateCollapse');
+    const applyRateChevron = document.getElementById('applyRateChevron');
+    
+    if (applyRateCollapse && applyRateChevron) {
+        applyRateCollapse.addEventListener('show.bs.collapse', function () {
+            applyRateChevron.classList.remove('fa-chevron-down');
+            applyRateChevron.classList.add('fa-chevron-up');
+        });
+        
+        applyRateCollapse.addEventListener('hide.bs.collapse', function () {
+            applyRateChevron.classList.remove('fa-chevron-up');
+            applyRateChevron.classList.add('fa-chevron-down');
+        });
+    }
+});
 </script>
 {% endblock %}

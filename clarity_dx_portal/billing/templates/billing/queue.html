@@ -28,14 +28,12 @@
                 <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for {{ queue_type }} Queue</h5>
             </div>
             <div class="card-body">
-                <p class="mb-2"><strong>These bills are not mapped yet. We need the following information:</strong></p>
+                <p class="mb-2"><strong>These bills need attention:</strong></p>
                 <ul class="mb-2">
-                    <li>Accurate patient name</li>
-                    <li>Line items</li>
-                    <li>Total charge</li>
-                    <li>Patient account no.</li>
+                    <li><strong>INVALID:</strong> Initial processing failed - can be retried with Second Pass</li>
+                    <li><strong>INVALID_2:</strong> Second pass failed - requires manual review</li>
                 </ul>
-                <p class="mb-0"><strong>Once complete please click "Validate"</strong></p>
+                <p class="mb-0"><strong>For INVALID bills, use "Second Pass" button. For INVALID_2 bills, review manually and click "Validate" if ready.</strong></p>
             </div>
         </div>
     </div>
@@ -105,6 +103,14 @@
                     </div>
                     <div class="col-auto">
                         <div class="btn-group" role="group">
+                            {% if queue_type == 'Validation' and invalid_bills_count > 0 %}
+                            <form method="post" action="{% url 'billing:process_second_pass' %}" style="display: inline;" onsubmit="showLoading('Second Pass Processing', 'Running enhanced AI processing on {{ invalid_bills_count }} bills...')">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-warning" onclick="return confirm('Are you sure you want to run second pass processing on all {{ invalid_bills_count }} INVALID bills? This will attempt to re-extract data using enhanced AI processing and may take several minutes.')">
+                                    <i class="fas fa-redo"></i> Second Pass ({{ invalid_bills_count }})
+                                </button>
+                            </form>
+                            {% endif %}
                             <button type="button" class="btn btn-sm btn-outline-primary" onclick="refreshQueue()">
                                 <i class="fas fa-sync-alt"></i> Refresh
                             </button>
@@ -211,10 +217,6 @@
                     {% if queue_type == 'Validation' %}
                     <button class="btn btn-success btn-sm" onclick="validateBill('{{ bill.id }}')">
                         <i class="fas fa-check"></i> Validate
-                    </button>
-                    {% elif queue_type == 'Mapping' %}
-                    <button class="btn btn-info btn-sm" onclick="mapBill('{{ bill.id }}')">
-                        <i class="fas fa-map-marker-alt"></i> Map Provider
                     </button>
                     {% elif queue_type == 'Correction' %}
                     <button class="btn btn-warning btn-sm" onclick="correctBill('{{ bill.id }}')">
@@ -334,10 +336,6 @@ function validateBill(billId) {
     }
 }
 
-function mapBill(billId) {
-    // TODO: Implement mapping logic
-    alert('Mapping functionality will be implemented for bill: ' + billId);
-}
 
 function correctBill(billId) {
     // TODO: Implement correction logic
@@ -385,5 +383,131 @@ function markAsPaid(billId) {
         form.submit();
     }
 }
+
+// Loading overlay functions
+function showLoading(title, message) {
+    document.getElementById('loadingTitle').textContent = title;
+    document.getElementById('loadingMessage').textContent = message;
+    document.getElementById('loadingOverlay').style.display = 'flex';
+    
+    // Disable all buttons to prevent multiple submissions
+    const buttons = document.querySelectorAll('button[type="submit"]');
+    buttons.forEach(button => {
+        button.disabled = true;
+        button.style.opacity = '0.6';
+    });
+}
+
+// Hide loading overlay when page loads (in case of redirect back)
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        document.getElementById('loadingOverlay').style.display = 'none';
+        
+        // Re-enable buttons
+        const buttons = document.querySelectorAll('button[type="submit"]');
+        buttons.forEach(button => {
+            button.disabled = false;
+            button.style.opacity = '1';
+        });
+    }, 1000);
+});
 </script>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay" style="display: none;">
+    <div class="loading-container">
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+        <div class="loading-content">
+            <h3 id="loadingTitle" class="loading-title">Processing...</h3>
+            <p id="loadingMessage" class="loading-message">Please wait while we process your request...</p>
+            <div class="loading-progress">
+                <div class="progress">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                </div>
+            </div>
+            <p class="loading-note">This may take several minutes. Please do not close this window.</p>
+        </div>
+    </div>
+</div>
+
+<style>
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.loading-container {
+    background: white;
+    border-radius: 15px;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 90%;
+}
+
+.loading-spinner {
+    margin-bottom: 30px;
+}
+
+.spinner-border {
+    width: 4rem;
+    height: 4rem;
+    border-width: 0.4em;
+}
+
+.loading-title {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-weight: 600;
+    animation: pulse 2s infinite;
+}
+
+.loading-message {
+    color: #7f8c8d;
+    font-size: 1.1rem;
+    margin-bottom: 25px;
+}
+
+.loading-progress {
+    margin-bottom: 20px;
+}
+
+.loading-note {
+    color: #95a5a6;
+    font-size: 0.9rem;
+    font-style: italic;
+    margin-bottom: 0;
+}
+
+.progress {
+    height: 8px;
+    border-radius: 10px;
+    background-color: #ecf0f1;
+}
+
+.progress-bar {
+    background: linear-gradient(45deg, #3498db, #2980b9);
+    border-radius: 10px;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+</style>
+
 {% endblock %}

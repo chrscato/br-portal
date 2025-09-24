@@ -1,0 +1,325 @@
+{% extends 'billing/base.html' %}
+
+{% block title %}Worker Assignment - Clarity Dx Bill Review Portal{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h2><i class="fas fa-users"></i> Worker Assignment</h2>
+                <p class="text-muted">Assign unassigned FileMaker bills to workers with percentage distribution</p>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'billing:filemaker_mapping_queue' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left"></i> Back to FileMaker Mapping
+                </a>
+                <a href="{% url 'billing:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assignment Form -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-percentage"></i> Assignment Distribution</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="assignmentForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="emma_percentage" class="form-label">Emma Percentage</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="emma_percentage" name="emma_percentage" 
+                                           value="33" min="0" max="100" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="nicole_percentage" class="form-label">Nicole Percentage</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="nicole_percentage" name="nicole_percentage" 
+                                           value="33" min="0" max="100" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="tony_percentage" class="form-label">Tony Percentage</label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="tony_percentage" name="tony_percentage" 
+                                           value="34" min="0" max="100" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <strong>Total: <span id="totalPercentage">100</span>%</strong>
+                                <small class="d-block">Percentages must add up to exactly 100%</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <button type="button" class="btn btn-primary" id="assignButton" disabled onclick="submitAssignment()">
+                                <i class="fas fa-users"></i> Assign Selected Bills
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="selectAllBills()">
+                                <i class="fas fa-check-square"></i> Select All
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="deselectAllBills()">
+                                <i class="fas fa-square"></i> Deselect All
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Unassigned Bills -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i> Unassigned Bills ({{ total_unassigned }})
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if unassigned_bills %}
+                <div class="row">
+                    {% for bill_data in bills_with_errors %}
+                        {% with bill=bill_data.bill validation_errors=bill_data.validation_errors %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card h-100 {% if validation_errors %}border-danger{% endif %}">
+                            <div class="card-header d-flex justify-content-between align-items-center {% if validation_errors %}bg-danger text-white{% else %}bg-secondary text-white{% endif %}">
+                                <h6 class="mb-0">
+                                    <div class="form-check d-inline-block">
+                                        <input type="checkbox" class="form-check-input bill-checkbox" 
+                                               name="bill_ids" value="{{ bill.id }}" id="bill_{{ bill.id }}">
+                                        <label for="bill_{{ bill.id }}" class="form-check-label">
+                                            <i class="fas fa-file-invoice"></i> {{ bill.id }}
+                                        </label>
+                                    </div>
+                                    {% if validation_errors %}
+                                        <i class="fas fa-exclamation-triangle ms-2"></i>
+                                    {% endif %}
+                                </h6>
+                                <span class="badge status-badge bg-{% if bill.status == 'MAPPED' %}success{% elif bill.status == 'UNMAPPED' %}warning{% else %}secondary{% endif %}">
+                                    {{ bill.status }}
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-2">
+                                    <strong>Patient:</strong> {{ bill.patient_name|default:"-" }}
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Provider:</strong> {{ bill.billing_provider_name|default:"-" }}
+                                </div>
+                                <div class="mb-2">
+                                    <strong>Total Charge:</strong> 
+                                    <span class="{% for error in validation_errors %}{% if error.type in 'total_charge_mismatch,total_charge_missing,total_charge_zero' %}charge-mismatch{% endif %}{% endfor %}">
+                                        {% if bill.total_charge %}
+                                            ${{ bill.total_charge|floatformat:2 }}
+                                        {% else %}
+                                            <span class="text-muted">Missing</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+                                
+                                {% if bill.claim_id %}
+                                <div class="mb-2">
+                                    <strong>Mapped to Order:</strong> 
+                                    <code class="text-success">{{ bill.claim_id }}</code>
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Validation Errors Display -->
+                                {% if validation_errors %}
+                                <div class="mb-2">
+                                    <strong class="text-danger">Validation Issues:</strong>
+                                    {% for error in validation_errors %}
+                                        <div class="alert alert-danger alert-sm py-1 px-2 mb-1">
+                                            <small>
+                                                <i class="fas fa-exclamation-circle"></i>
+                                                {% if error.type == 'total_charge_mismatch' %}
+                                                    Total charge mismatch: ${{ error.total_charge|floatformat:2 }} vs ${{ error.line_items_sum|floatformat:2 }} (diff: ${{ error.difference|floatformat:2 }})
+                                                {% elif error.type == 'total_charge_missing' %}
+                                                    Total charge missing but line items sum to ${{ error.line_items_sum|floatformat:2 }}
+                                                {% elif error.type == 'total_charge_zero' %}
+                                                    Total charge is $0.00 but line items sum to ${{ error.line_items_sum|floatformat:2 }}
+                                                {% else %}
+                                                    {{ error.message }}
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                
+                                {% if bill.last_error %}
+                                <div class="mb-2">
+                                    <strong>Last Error:</strong>
+                                    <small class="text-danger">{{ bill.last_error|truncatechars:50 }}</small>
+                                </div>
+                                {% endif %}
+                                <div class="mb-2">
+                                    <strong>Action Required:</strong>
+                                    <span class="badge bg-info">{{ bill.action|title }}</span>
+                                </div>
+                                <div class="mb-3">
+                                    <strong>Updated:</strong>
+                                    {% if bill.updated_at %}
+                                        {{ bill.updated_at|date:"M d, Y H:i" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <div class="d-grid gap-2">
+                                    <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-eye"></i> View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                        {% endwith %}
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <h4 class="text-muted">No unassigned bills found</h4>
+                    <p class="text-muted">All FileMaker bills have been assigned to workers.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.charge-mismatch {
+    background-color: #f8d7da !important;
+    border: 2px solid #dc3545 !important;
+    border-radius: 4px !important;
+    padding: 2px 6px !important;
+}
+
+.bill-checkbox {
+    transform: scale(1.2);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateTotalPercentage() {
+    const emma = parseInt(document.getElementById('emma_percentage').value) || 0;
+    const nicole = parseInt(document.getElementById('nicole_percentage').value) || 0;
+    const tony = parseInt(document.getElementById('tony_percentage').value) || 0;
+    const total = emma + nicole + tony;
+    
+    document.getElementById('totalPercentage').textContent = total;
+    
+    const assignButton = document.getElementById('assignButton');
+    const selectedBills = document.querySelectorAll('input[name="bill_ids"]:checked').length;
+    
+    if (total === 100 && selectedBills > 0) {
+        assignButton.disabled = false;
+        assignButton.classList.remove('btn-outline-primary');
+        assignButton.classList.add('btn-primary');
+    } else {
+        assignButton.disabled = true;
+        assignButton.classList.remove('btn-primary');
+        assignButton.classList.add('btn-outline-primary');
+    }
+}
+
+function selectAllBills() {
+    const checkboxes = document.querySelectorAll('input[name="bill_ids"]');
+    console.log('Selecting all bills:', checkboxes.length);
+    checkboxes.forEach(checkbox => checkbox.checked = true);
+    updateTotalPercentage();
+}
+
+function deselectAllBills() {
+    const checkboxes = document.querySelectorAll('input[name="bill_ids"]');
+    checkboxes.forEach(checkbox => checkbox.checked = false);
+    updateTotalPercentage();
+}
+
+function submitAssignment() {
+    const selectedBills = document.querySelectorAll('input[name="bill_ids"]:checked');
+    console.log('Selected bills:', selectedBills.length);
+    if (selectedBills.length === 0) {
+        alert('Please select at least one bill to assign.');
+        return;
+    }
+    
+    const emma = parseInt(document.getElementById('emma_percentage').value) || 0;
+    const nicole = parseInt(document.getElementById('nicole_percentage').value) || 0;
+    const tony = parseInt(document.getElementById('tony_percentage').value) || 0;
+    const total = emma + nicole + tony;
+    
+    if (total !== 100) {
+        alert('Percentages must add up to exactly 100%.');
+        return;
+    }
+    
+    // Clear any existing hidden inputs
+    const existingHidden = document.querySelectorAll('input[name="bill_ids"][type="hidden"]');
+    existingHidden.forEach(input => input.remove());
+    
+    // Add selected bill IDs to the form
+    selectedBills.forEach(checkbox => {
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'bill_ids';
+        hiddenInput.value = checkbox.value;
+        document.getElementById('assignmentForm').appendChild(hiddenInput);
+    });
+    
+    // Show confirmation
+    if (confirm(`Are you sure you want to assign ${selectedBills.length} bills?\n\nEmma: ${emma}% (${Math.round(selectedBills.length * emma / 100)} bills)\nNicole: ${nicole}% (${Math.round(selectedBills.length * nicole / 100)} bills)\nTony: ${tony}% (${Math.round(selectedBills.length * tony / 100)} bills)`)) {
+        // Submit the form
+        document.getElementById('assignmentForm').submit();
+    }
+}
+
+// Add event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Percentage input listeners
+    document.getElementById('emma_percentage').addEventListener('input', updateTotalPercentage);
+    document.getElementById('nicole_percentage').addEventListener('input', updateTotalPercentage);
+    document.getElementById('tony_percentage').addEventListener('input', updateTotalPercentage);
+    
+    // Checkbox listeners
+    document.querySelectorAll('input[name="bill_ids"]').forEach(checkbox => {
+        checkbox.addEventListener('change', updateTotalPercentage);
+    });
+    
+    // Initial update
+    updateTotalPercentage();
+});
+</script>
+{% endblock %}

@@ -1,16 +1,19 @@
 {% extends 'billing/base.html' %}
 
-{% block title %}Mapping Queue - Clarity Dx Bill Review Portal{% endblock %}
+{% block title %}FileMaker Mapping Queue - Clarity Dx Bill Review Portal{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h2><i class="fas fa-map-marker-alt"></i> Mapping Queue</h2>
-                <p class="text-muted">Map provider bills to orders by searching patient information</p>
+                <h2><i class="fas fa-database"></i> FileMaker Mapping Queue</h2>
+                <p class="text-muted">Map provider bills to FileMaker orders by searching patient information</p>
             </div>
             <div class="d-flex gap-2">
+                <a href="{% url 'billing:worker_assignment' %}" class="btn btn-primary">
+                    <i class="fas fa-users me-2"></i>Assign to Workers
+                </a>
                 {% if valid_to_map_count > 0 %}
                 <form method="post" action="{% url 'billing:process_mapping' %}" style="display: inline;" onsubmit="showLoading('Auto-Mapping Bills', 'Automatically mapping {{ valid_to_map_count }} valid bills to orders...')">
                     {% csrf_token %}
@@ -27,15 +30,84 @@
     </div>
 </div>
 
+<!-- Worker Navigation -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-users"></i> Worker Navigation</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="d-grid">
+                            <a href="{% url 'billing:worker_queue' 'Emma' %}" class="btn btn-info">
+                                <i class="fas fa-user me-2"></i>Emma Queue ({{ emma_count }})
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-grid">
+                            <a href="{% url 'billing:worker_queue' 'Nicole' %}" class="btn btn-warning">
+                                <i class="fas fa-user me-2"></i>Nicole Queue ({{ nicole_count }})
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-grid">
+                            <a href="{% url 'billing:worker_queue' 'Tony' %}" class="btn btn-secondary">
+                                <i class="fas fa-user me-2"></i>Tony Queue ({{ tony_count }})
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-grid">
+                            <a href="{% url 'billing:worker_assignment' %}" class="btn btn-danger">
+                                <i class="fas fa-users me-2"></i>Assign Bills ({{ unassigned_count }})
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Distribution Charts -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Worker Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="workerChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-bar"></i> Status Distribution</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="statusChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 <!-- Instructions Panel -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card border-info">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for Mapping Queue</h5>
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for FileMaker Mapping Queue</h5>
             </div>
             <div class="card-body">
-                <p class="mb-2"><strong>Please reference the mapping search function at the bottom here and map this bill to the correct order found in FileMaker.</strong></p>
+                <p class="mb-2"><strong>This queue shows all MAPPED and UNMAPPED bills for FileMaker integration (excluding paid bills).</strong></p>
+                <p class="mb-2"><strong>Use the worker navigation buttons above to access individual worker queues, or use the search function below to find specific orders.</strong></p>
                 <p class="mb-0"><strong>Use last name, first name, line item DOS and match it to the correct FileMaker order that reconciles with DOS, CPT, and listed provider.</strong></p>
             </div>
         </div>
@@ -81,13 +153,13 @@
     </div>
 </div>
 
-<!-- Unmapped Bills -->
+<!-- Mapped and Unmapped Bills -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="fas fa-exclamation-triangle"></i> Unmapped Bills ({{ bills|length }})
+                    <i class="fas fa-list"></i> FileMaker Bills ({{ bills|length }})
                 </h5>
             </div>
             <div class="card-body">
@@ -104,7 +176,7 @@
                                         <i class="fas fa-exclamation-triangle ms-2"></i>
                                     {% endif %}
                                 </h6>
-                                <span class="badge status-badge bg-{% if bill.status == 'ESCALATE' %}danger{% elif bill.status == 'MAPPED' %}warning{% elif bill.status == 'REVIEWED' %}success{% elif bill.status == 'VALID' %}info{% elif bill.status == 'INVALID' %}danger{% else %}secondary{% endif %}">
+                                <span class="badge status-badge bg-{% if bill.status == 'ESCALATE' %}danger{% elif bill.status == 'MAPPED' %}success{% elif bill.status == 'REVIEWED' %}success{% elif bill.status == 'VALID' %}info{% elif bill.status == 'INVALID' %}danger{% elif bill.status == 'UNMAPPED' %}warning{% else %}secondary{% endif %}">
                                     {{ bill.status }}
                                 </span>
                             </div>
@@ -183,8 +255,8 @@
                 {% else %}
                 <div class="text-center py-5">
                     <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                    <h4 class="text-muted">No unmapped bills found</h4>
-                    <p class="text-muted">All bills have been mapped or no bills match the current criteria.</p>
+                    <h4 class="text-muted">No mapped or unmapped bills found</h4>
+                    <p class="text-muted">All bills have been processed or no bills match the current criteria.</p>
                 </div>
                 {% endif %}
             </div>
@@ -341,7 +413,113 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// Worker Distribution Chart
+const workerCtx = document.getElementById('workerChart').getContext('2d');
+const workerChart = new Chart(workerCtx, {
+    type: 'pie',
+    data: {
+        labels: [
+            {% for item in worker_distribution %}
+                '{{ item.assigned_worker|default:"Unassigned" }}',
+            {% endfor %}
+        ],
+        datasets: [{
+            data: [
+                {% for item in worker_distribution %}
+                    {{ item.count }},
+                {% endfor %}
+            ],
+            backgroundColor: [
+                '#17a2b8', // Info (Emma)
+                '#ffc107', // Warning (Nicole)
+                '#6c757d', // Secondary (Tony)
+                '#dc3545', // Danger (Unassigned)
+            ],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const label = context.label || '';
+                        const value = context.parsed;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return `${label}: ${value} (${percentage}%)`;
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Status Distribution Chart
+const statusCtx = document.getElementById('statusChart').getContext('2d');
+const statusChart = new Chart(statusCtx, {
+    type: 'bar',
+    data: {
+        labels: [
+            {% for item in status_distribution %}
+                '{{ item.status }}',
+            {% endfor %}
+        ],
+        datasets: [{
+            label: 'Number of Bills',
+            data: [
+                {% for item in status_distribution %}
+                    {{ item.count }},
+                {% endfor %}
+            ],
+            backgroundColor: [
+                '#28a745', // Success (MAPPED)
+                '#ffc107', // Warning (UNMAPPED)
+            ],
+            borderColor: [
+                '#1e7e34',
+                '#e0a800',
+            ],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const value = context.parsed.y;
+                        const total = {{ total_filemaker_bills }};
+                        const percentage = ((value / total) * 100).toFixed(1);
+                        return `${context.label}: ${value} (${percentage}%)`;
+                    }
+                }
+            }
+        }
+    }
+});
+
 
 </script>
 {% endblock %}

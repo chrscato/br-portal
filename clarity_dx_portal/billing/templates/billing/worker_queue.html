@@ -1,26 +1,24 @@
 {% extends 'billing/base.html' %}
 
-{% block title %}Mapping Queue - Clarity Dx Bill Review Portal{% endblock %}
+{% block title %}{{ worker_name }} Queue - Clarity Dx Bill Review Portal{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h2><i class="fas fa-map-marker-alt"></i> Mapping Queue</h2>
-                <p class="text-muted">Map provider bills to orders by searching patient information</p>
+                <h2><i class="fas fa-user"></i> {{ worker_name }} Queue</h2>
+                <p class="text-muted">Bills assigned to {{ worker_name }} for FileMaker processing</p>
             </div>
             <div class="d-flex gap-2">
-                {% if valid_to_map_count > 0 %}
-                <form method="post" action="{% url 'billing:process_mapping' %}" style="display: inline;" onsubmit="showLoading('Auto-Mapping Bills', 'Automatically mapping {{ valid_to_map_count }} valid bills to orders...')">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-success" onclick="return confirm('Are you sure you want to auto-map all {{ valid_to_map_count }} valid bills? This will attempt to match bills to existing orders based on patient name and dates.')">
-                        <i class="fas fa-magic me-2"></i>Auto-Map Bills ({{ valid_to_map_count }})
-                    </button>
-                </form>
-                {% endif %}
+                <a href="{% url 'billing:worker_assignment' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-users"></i> Worker Assignment
+                </a>
+                <a href="{% url 'billing:filemaker_mapping_queue' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> FileMaker Mapping
+                </a>
                 <a href="{% url 'billing:dashboard' %}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                    <i class="fas fa-home"></i> Dashboard
                 </a>
             </div>
         </div>
@@ -32,11 +30,12 @@
     <div class="col-12">
         <div class="card border-info">
             <div class="card-header bg-info text-white">
-                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for Mapping Queue</h5>
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Instructions for {{ worker_name }} Queue</h5>
             </div>
             <div class="card-body">
-                <p class="mb-2"><strong>Please reference the mapping search function at the bottom here and map this bill to the correct order found in FileMaker.</strong></p>
-                <p class="mb-0"><strong>Use last name, first name, line item DOS and match it to the correct FileMaker order that reconciles with DOS, CPT, and listed provider.</strong></p>
+                <p class="mb-2"><strong>This queue shows bills assigned to {{ worker_name }} for FileMaker processing.</strong></p>
+                <p class="mb-2"><strong>These bills are ready for review, mapping, or further processing by {{ worker_name }}.</strong></p>
+                <p class="mb-0"><strong>Use the search function below to find specific orders or review bill details.</strong></p>
             </div>
         </div>
     </div>
@@ -47,7 +46,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0"><i class="fas fa-search"></i> Search Orders for Mapping</h5>
+                <h5 class="mb-0"><i class="fas fa-search"></i> Search Orders</h5>
             </div>
             <div class="card-body">
                 <form method="get" class="row g-3">
@@ -70,7 +69,7 @@
                     <div class="col-md-4">
                         <label class="form-label">&nbsp;</label>
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-info">
                                 <i class="fas fa-search"></i> Search Orders
                             </button>
                         </div>
@@ -81,13 +80,13 @@
     </div>
 </div>
 
-<!-- Unmapped Bills -->
+<!-- Assigned Bills -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
             <div class="card-header">
                 <h5 class="mb-0">
-                    <i class="fas fa-exclamation-triangle"></i> Unmapped Bills ({{ bills|length }})
+                    <i class="fas fa-user"></i> {{ worker_name }}'s Bills ({{ bills|length }})
                 </h5>
             </div>
             <div class="card-body">
@@ -97,14 +96,14 @@
                         {% with bill=bill_data.bill validation_errors=bill_data.validation_errors %}
                     <div class="col-md-6 col-lg-4 mb-3">
                         <div class="card h-100 {% if validation_errors %}border-danger{% endif %}">
-                            <div class="card-header d-flex justify-content-between align-items-center {% if validation_errors %}bg-danger text-white{% endif %}">
+                            <div class="card-header d-flex justify-content-between align-items-center {% if validation_errors %}bg-danger text-white{% elif bill.status == 'MAPPED' %}bg-success text-white{% else %}bg-warning text-dark{% endif %}">
                                 <h6 class="mb-0">
                                     <i class="fas fa-file-invoice"></i> {{ bill.id }}
                                     {% if validation_errors %}
                                         <i class="fas fa-exclamation-triangle ms-2"></i>
                                     {% endif %}
                                 </h6>
-                                <span class="badge status-badge bg-{% if bill.status == 'ESCALATE' %}danger{% elif bill.status == 'MAPPED' %}warning{% elif bill.status == 'REVIEWED' %}success{% elif bill.status == 'VALID' %}info{% elif bill.status == 'INVALID' %}danger{% else %}secondary{% endif %}">
+                                <span class="badge status-badge bg-{% if bill.status == 'MAPPED' %}success{% elif bill.status == 'UNMAPPED' %}warning{% else %}secondary{% endif %}">
                                     {{ bill.status }}
                                 </span>
                             </div>
@@ -124,6 +123,18 @@
                                             <span class="text-muted">Missing</span>
                                         {% endif %}
                                     </span>
+                                </div>
+                                
+                                {% if bill.claim_id %}
+                                <div class="mb-2">
+                                    <strong>Mapped to Order:</strong> 
+                                    <code class="text-success">{{ bill.claim_id }}</code>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="mb-2">
+                                    <strong>Assigned to:</strong> 
+                                    <span class="badge bg-info">{{ bill.assigned_worker }}</span>
                                 </div>
                                 
                                 <!-- Validation Errors Display -->
@@ -173,6 +184,11 @@
                                     <a href="{% url 'billing:bill_detail' bill.id %}" class="btn btn-primary btn-sm">
                                         <i class="fas fa-eye"></i> View Details
                                     </a>
+                                    {% if bill.status == 'MAPPED' %}
+                                    <button class="btn btn-success btn-sm" onclick="reviewMapping('{{ bill.id }}', '{{ bill.claim_id }}')">
+                                        <i class="fas fa-search"></i> Review Mapping
+                                    </button>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -182,9 +198,9 @@
                 </div>
                 {% else %}
                 <div class="text-center py-5">
-                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                    <h4 class="text-muted">No unmapped bills found</h4>
-                    <p class="text-muted">All bills have been mapped or no bills match the current criteria.</p>
+                    <i class="fas fa-user fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No bills assigned to {{ worker_name }}</h4>
+                    <p class="text-muted">No bills have been assigned to {{ worker_name }} yet.</p>
                 </div>
                 {% endif %}
             </div>
@@ -261,7 +277,10 @@
                                 </td>
                                 <td><code>{{ result.order_id }}</code></td>
                                 <td>
-                                    <span class="text-muted">Use View Details to map</span>
+                                    <button class="btn btn-sm btn-info" 
+                                            onclick="showOrderDetails('{{ result.order_id }}', '{{ result.patient_name }}', '{{ result.cpt_codes }}', '{{ result.dos }}')">
+                                        <i class="fas fa-info-circle"></i> View Details
+                                    </button>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -316,21 +335,10 @@
     </div>
 </div>
 {% endif %}
-
 {% endblock %}
 
 {% block extra_css %}
 <style>
-.validation-highlight {
-    background-color: #fff3cd !important;
-    border-left: 4px solid #ffc107 !important;
-}
-
-.validation-error-highlight {
-    background-color: #f8d7da !important;
-    border-left: 4px solid #dc3545 !important;
-}
-
 .charge-mismatch {
     background-color: #f8d7da !important;
     border: 2px solid #dc3545 !important;
@@ -343,5 +351,14 @@
 {% block extra_js %}
 <script>
 
+function reviewMapping(billId, orderId) {
+    // TODO: Implement mapping review logic
+    alert('Review mapping functionality will be implemented for bill: ' + billId + ' mapped to order: ' + orderId);
+}
+
+function showOrderDetails(orderId, patientName, cpt, dos) {
+    // TODO: Implement order details display
+    alert('Order details for: ' + orderId + ' - Patient: ' + patientName);
+}
 </script>
 {% endblock %}

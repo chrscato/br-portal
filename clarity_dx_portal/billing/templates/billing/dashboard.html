@@ -141,6 +141,23 @@
     
     <div class="col-md-3">
         <div class="card queue-card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-database"></i> FileMaker Mapping</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">FileMaker integration queue (Status: MAPPED, UNMAPPED, Unpaid)</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="badge bg-primary">{{ filemaker_mapping_count }} bills</span>
+                    <a href="{% url 'billing:filemaker_mapping_queue' %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-arrow-right"></i> Process
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card queue-card h-100">
             <div class="card-header bg-danger text-white">
                 <h5 class="mb-0"><i class="fas fa-flag"></i> Correction Queue</h5>
             </div>
@@ -172,7 +189,9 @@
             </div>
         </div>
     </div>
+    
 </div>
+
 
 <!-- Ready to Pay Queue Row -->
 <div class="row mb-4">

@@ -27,13 +27,23 @@ git commit -m "$commit_message" || echo "📝 Nothing to commit"
 CURRENT_BRANCH=$(git branch --show-current)
 git push origin $CURRENT_BRANCH
 
-# === STEP 2: Copy .env file to VM ===
-echo "📄 Copying .env file to VM..."
+# === STEP 2: Copy .env files to VM ===
+echo "📄 Copying .env files to VM..."
+
+# Copy root .env file
 if [ -f ".env" ]; then
     scp .env $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/.env
-    echo "✅ .env file copied successfully"
+    echo "✅ Root .env file copied successfully"
 else
-    echo "⚠️  No .env file found locally - skipping copy"
+    echo "⚠️  No root .env file found locally - skipping copy"
+fi
+
+# Copy Django project .env file
+if [ -f "clarity_dx_portal/.env" ]; then
+    scp clarity_dx_portal/.env $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/clarity_dx_portal/.env
+    echo "✅ Django .env file copied successfully"
+else
+    echo "⚠️  No Django .env file found locally - skipping copy"
 fi
 
 # === STEP 3: SSH into VM, pull latest, restart app ===

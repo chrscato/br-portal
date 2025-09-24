@@ -13,9 +13,15 @@ urlpatterns = [
     path('intake/', views.intake_queue, name='intake_queue'),
     path('intake/upload/', views.upload_pdf_batch, name='upload_pdf_batch'),
     path('intake/process-scans/', views.process_scans, name='process_scans'),
+    path('intake/process-validation/', views.process_validation, name='process_validation'),
+    path('intake/process-mapping/', views.process_mapping, name='process_mapping'),
+    path('validation/process-second-pass/', views.process_second_pass, name='process_second_pass'),
     path('test-import/', views.test_import, name='test_import'),
     path('validation/', views.validation_queue, name='validation_queue'),
     path('mapping/', views.mapping_queue, name='mapping_queue'),
+    path('filemaker-mapping/', views.filemaker_mapping_queue, name='filemaker_mapping_queue'),
+    path('worker-assignment/', views.worker_assignment, name='worker_assignment'),
+    path('worker/<str:worker_name>/', views.worker_queue, name='worker_queue'),
     path('correction/', views.correction_queue, name='correction_queue'),
     path('rate-correction/', views.rate_correction_queue, name='rate_correction_queue'),
     path('ready-to-pay/', views.ready_to_pay_queue, name='ready_to_pay_queue'),
@@ -42,6 +48,7 @@ urlpatterns = [
     path('bill/<str:bill_id>/mark-paid/', views.mark_bill_paid, name='mark_bill_paid'),
     path('bill/<str:bill_id>/approve-for-rate/', views.approve_for_rate, name='approve_for_rate'),
     path('bill/<str:bill_id>/approve-for-payment/', views.approve_for_payment, name='approve_for_payment'),
+    path('bill/<str:bill_id>/approve-for-bill-review/', views.approve_for_bill_review, name='approve_for_bill_review'),
     
     # Bill line item management
     path('bill/<str:bill_id>/add-line-item/', views.add_bill_line_item, name='add_bill_line_item'),

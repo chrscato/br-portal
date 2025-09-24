@@ -31,7 +31,6 @@ from openai import RateLimitError, APIError, APITimeoutError
 from config.s3_utils import list_objects, download, upload, move
 
 # Import validation utilities
-from utils.validate_intake import validate_provider_bill
 from utils.date_utils import standardize_and_validate_date_of_service
 
 # Configure logging
@@ -63,14 +62,20 @@ INPUT_PREFIX = "data/ProviderBills/pdf/"
 OUTPUT_PREFIX = "data/ProviderBills/json/"
 ARCHIVE_PREFIX = "data/ProviderBills/pdf/archive/"
 
-# Initialize OpenAI client
-try:
-    openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")
-except Exception as e:
-    logger.error(f"Failed to initialize OpenAI client: {e}")
-    openai_client = None
-    OPENAI_MODEL = "gpt-4o"
+# Initialize OpenAI client - will be initialized after Django setup
+openai_client = None
+OPENAI_MODEL = "gpt-4o"
+
+def initialize_openai_client():
+    """Initialize OpenAI client after Django setup and environment loading."""
+    global openai_client
+    try:
+        openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        logger.info("OpenAI client initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize OpenAI client: {e}")
+        logger.info("Please check your OPENAI_API_KEY environment variable")
+        openai_client = None
 
 # Common CPT codes for validation
 COMMON_CPT_CODES = {
@@ -283,6 +288,79 @@ def extract_with_llm(image: Image.Image, strategy: ExtractionStrategy = Extracti
             except Exception as e:
                 logger.warning(f"Error deleting temporary file {temp_file}: {e}")
 
+def validate_provider_bill_django(bill_id: str) -> tuple[str, str, str]:
+    """
+    Validate a ProviderBill record and its line items using Django ORM.
+    Returns (status, action, error_message)
+    """
+    # Import Django models locally to avoid import issues
+    from billing.models import ProviderBill, BillLineItem
+    
+    try:
+        # Get the ProviderBill record
+        bill = ProviderBill.objects.get(id=bill_id)
+    except ProviderBill.DoesNotExist:
+        return 'INVALID', 'to_validate', f"ProviderBill {bill_id} not found"
+    
+    # Get all line items for this bill
+    line_items = BillLineItem.objects.filter(provider_bill=bill)
+    
+    if not line_items.exists():
+        return 'INVALID', 'add_line_items', f"No line items found for ProviderBill {bill_id}"
+    
+    # Validation checks
+    errors = []
+    
+    # 1. Check required fields (only patient_name and total_charge are required)
+    if not bill.patient_name:
+        errors.append("Missing Patient name")
+    if not bill.total_charge:
+        errors.append("Missing Total charge")
+    
+    # 2. Validate line items
+    for item in line_items:
+        # Check CPT code format
+        if not item.cpt_code or len(item.cpt_code) != 5:
+            errors.append(f"Invalid CPT code format: {item.cpt_code}")
+        
+        # Check charge amount
+        if not item.charge_amount or item.charge_amount <= 0:
+            errors.append(f"Invalid charge amount: {item.charge_amount}")
+        
+        # Check date of service
+        try:
+            date_str = item.date_of_service
+            if date_str:
+                is_valid, standardized_date, error_msg = standardize_and_validate_date_of_service(date_str)
+                
+                if not is_valid:
+                    errors.append(f"Date of service error: {error_msg}")
+                else:
+                    # Log if we standardized the format
+                    if date_str != standardized_date:
+                        logger.info(f"Standardized date for line item {item.id}: '{date_str}' -> '{standardized_date}'")
+                        
+        except Exception as e:
+            errors.append(f"Error processing date: {date_str} - {str(e)}")
+    
+    # 3. Check total charge matches sum of line items
+    total_line_charges = sum(item.charge_amount for item in line_items if item.charge_amount)
+    if bill.total_charge and total_line_charges:
+        if abs(total_line_charges - bill.total_charge) > 10.00:  # Allow for small rounding differences
+            errors.append(f"Total charge mismatch: {bill.total_charge} vs {total_line_charges}")
+    elif bill.total_charge and not total_line_charges:
+        errors.append(f"Total charge exists but no line item charges found")
+    elif not bill.total_charge and total_line_charges:
+        errors.append(f"Line item charges exist but no total charge found")
+    
+    # Determine status and action based on validation results
+    if errors:
+        error_message = "; ".join(errors)
+        return 'INVALID', 'to_validate', error_message
+    
+    # If all validations pass
+    return 'VALID', 'to_map', None
+
 def update_provider_bill_record(provider_bill_id: str, extracted_data: dict) -> bool:
     """Update ProviderBill record and create BillLineItem entries using Django ORM."""
     # Import Django models locally to avoid import issues
@@ -370,6 +448,22 @@ def update_provider_bill_record(provider_bill_id: str, extracted_data: dict) -> 
                     continue
             
             logger.info(f"Successfully updated database for bill {provider_bill_id}")
+            
+            # Validate the bill after updating
+            logger.info(f"Validating bill {provider_bill_id} after extraction")
+            status, action, error_message = validate_provider_bill_django(provider_bill_id)
+            
+            # Update the bill with validation results
+            bill.status = status
+            bill.action = action
+            bill.last_error = error_message
+            bill.updated_at = timezone.now()
+            bill.save()
+            
+            logger.info(f"Validation complete for bill {provider_bill_id}: status={status}, action={action}")
+            if error_message:
+                logger.warning(f"Validation errors: {error_message}")
+            
             return True
             
     except Exception as e:
@@ -489,6 +583,67 @@ def get_scanned_bills_from_db(limit: int = None) -> List[Dict[str, Any]]:
         logger.error(f"Database error querying SCANNED bills: {e}")
         return []
 
+def process_scraped_validation(limit: int = None):
+    """Process bills from database with status 'SCRAPED' for validation."""
+    # Import Django models locally to avoid import issues
+    from billing.models import ProviderBill
+    
+    logger.info("Starting validation processing for SCRAPED bills")
+    
+    try:
+        # Get bills from database
+        bills = ProviderBill.objects.filter(status='SCRAPED')
+        if limit:
+            bills = bills[:limit]
+        
+        bill_list = []
+        for bill in bills:
+            bill_list.append({
+                'id': bill.id,
+                'source_file': bill.source_file
+            })
+        
+        if not bill_list:
+            logger.info("No bills with status 'SCRAPED' found for validation")
+            return
+        
+        logger.info(f"Found {len(bill_list)} bills to validate")
+        
+        successful = 0
+        failed = 0
+        
+        for i, bill_data in enumerate(bill_list, 1):
+            bill_id = bill_data['id']
+            
+            logger.info(f"[{i}/{len(bill_list)}] Validating {bill_id}")
+            
+            # Validate the bill
+            status, action, error_message = validate_provider_bill_django(bill_id)
+            
+            # Update the bill with validation results
+            try:
+                bill = ProviderBill.objects.get(id=bill_id)
+                bill.status = status
+                bill.action = action
+                bill.last_error = error_message
+                bill.save()
+                
+                logger.info(f"Validation complete for {bill_id}: status={status}, action={action}")
+                if error_message:
+                    logger.warning(f"Validation errors for {bill_id}: {error_message}")
+                    failed += 1
+                else:
+                    successful += 1
+                    
+            except Exception as e:
+                logger.error(f"Error updating bill {bill_id} after validation: {e}")
+                failed += 1
+        
+        logger.info(f"Validation processing complete: {successful} successful, {failed} failed")
+        
+    except Exception as e:
+        logger.error(f"Error in validation processing: {e}")
+
 def process_scanned_bills(limit: int = None):
     """Process bills from database with status 'SCANNED'."""
     logger.info("Starting database bill processing for SCANNED status")
@@ -533,6 +688,8 @@ def process_scanned_bills(limit: int = None):
 import io
 
 if __name__ == "__main__":
+    import django
+    
     # Setup Django
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'clarity_dx_portal.settings')
     django.setup()

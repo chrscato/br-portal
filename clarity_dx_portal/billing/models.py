@@ -21,6 +21,7 @@ class ProviderBill(models.Model):
         ('FLAGGED', 'Flagged'),
         ('SCANNED', 'Scanned'),
         ('SCRAPED', 'Scraped'),
+        ('APPROVED_FOR_BR', 'Approved for Bill Review'),
     ]
     
     ACTION_CHOICES = [
@@ -35,6 +36,12 @@ class ProviderBill(models.Model):
         ('correct_data', 'Correct Data'),
         ('review_rate', 'Review Rate'),
         ('review_rates', 'Review Rates'),
+    ]
+    
+    WORKER_CHOICES = [
+        ('Emma', 'Emma'),
+        ('Nicole', 'Nicole'),
+        ('Tony', 'Tony'),
     ]
     
     id = models.CharField(max_length=50, primary_key=True)
@@ -55,6 +62,7 @@ class ProviderBill(models.Model):
     patient_account_no = models.CharField(max_length=50, blank=True, null=True)
     action = models.CharField(max_length=30, choices=ACTION_CHOICES, default='resolve_escalation')
     bill_paid = models.CharField(max_length=1, blank=True, null=True)
+    assigned_worker = models.CharField(max_length=20, choices=WORKER_CHOICES, blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
     
     class Meta:

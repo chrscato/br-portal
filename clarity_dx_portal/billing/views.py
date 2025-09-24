@@ -167,6 +167,8 @@ def dashboard(request):
     intake_count = ProviderBill.objects.filter(status='SCANNED').count()
     validation_count = ProviderBill.objects.filter(status='INVALID').count()
     mapping_count = ProviderBill.objects.filter(status__in=['UNMAPPED', 'VALID']).count()
+    filemaker_mapping_count = ProviderBill.objects.filter(status__in=['MAPPED', 'UNMAPPED']).exclude(bill_paid='Y').count()
+    
     correction_count = ProviderBill.objects.filter(status__in=['REVIEW_FLAG', 'FLAGGED']).count()
     rate_correction_count = ProviderBill.objects.filter(action__in=['review_rate', 'review_rates']).count()
     ready_to_pay_count = ProviderBill.objects.filter(
@@ -184,6 +186,7 @@ def dashboard(request):
         'intake_count': intake_count,
         'validation_count': validation_count,
         'mapping_count': mapping_count,
+        'filemaker_mapping_count': filemaker_mapping_count,
         'correction_count': correction_count,
         'rate_correction_count': rate_correction_count,
         'ready_to_pay_count': ready_to_pay_count,
@@ -194,8 +197,9 @@ def dashboard(request):
 
 @login_required
 def validation_queue(request):
-    """Validation queue - status = 'INVALID'"""
-    bills = ProviderBill.objects.filter(status='INVALID').order_by('-created_at')
+    """Validation queue - status = 'INVALID' and 'INVALID_2'"""
+    bills = ProviderBill.objects.filter(status__in=['INVALID', 'INVALID_2']).order_by('-created_at')
+    invalid_bills = ProviderBill.objects.filter(status='INVALID')  # Only INVALID for second pass
     
     # Add validation errors to each bill
     bills_with_errors = []
@@ -209,8 +213,9 @@ def validation_queue(request):
     context = {
         'bills': bills,
         'bills_with_errors': bills_with_errors,
+        'invalid_bills_count': invalid_bills.count(),
         'queue_type': 'Validation',
-        'status_filter': 'INVALID',
+        'status_filter': 'INVALID and INVALID_2',
     }
     
     return render(request, 'billing/queue.html', context)
@@ -313,10 +318,14 @@ def mapping_queue(request):
             'validation_errors': validation_errors
         })
     
+    # Get count of bills that can be auto-mapped
+    valid_to_map_count = ProviderBill.objects.filter(status='VALID', action='to_map').count()
+    
     context = {
         'bills': bills,
         'bills_with_errors': bills_with_errors,
         'search_results': search_results_page,
+        'valid_to_map_count': valid_to_map_count,
         'queue_type': 'Mapping',
         'status_filter': 'UNMAPPED',
         'first_name': first_name,
@@ -325,6 +334,337 @@ def mapping_queue(request):
     }
     
     return render(request, 'billing/mapping_queue.html', context)
+
+
+@login_required
+def filemaker_mapping_queue(request):
+    """FileMaker Mapping queue - status in ('MAPPED', 'UNMAPPED') with search functionality"""
+    from datetime import datetime, timedelta
+    from django.db.models import Q
+    
+    # Get search parameters
+    first_name = request.GET.get('first_name', '').strip()
+    last_name = request.GET.get('last_name', '').strip()
+    dos_date = request.GET.get('dos_date', '').strip()
+    
+    # Start with mapped and unmapped bills (FileMaker specific) - exclude paid bills
+    bills = ProviderBill.objects.filter(status__in=['MAPPED', 'UNMAPPED']).exclude(bill_paid='Y').order_by('-created_at')
+    
+    # Search results for mapping
+    search_results = []
+    
+    if first_name or last_name or dos_date:
+        # Build query for orders table
+        order_query = Q()
+        
+        if first_name:
+            # Search in patient first name with LIKE pattern
+            order_query &= Q(patient_first_name__icontains=first_name)
+        
+        if last_name:
+            # Search in patient last name with LIKE pattern
+            order_query &= Q(patient_last_name__icontains=last_name)
+        
+        order_query = add_date_search_to_query(order_query, dos_date)
+        
+        # Get matching orders with their line items
+        if order_query:
+            orders = Order.objects.filter(order_query).distinct()
+            search_results = []
+            
+            for order in orders:
+                # Get line items for this order
+                line_items = OrderLineItem.objects.filter(order=order)
+                
+                if line_items.exists():
+                    # Group line items by order and consolidate
+                    patient_name = f"{order.patient_first_name or ''} {order.patient_last_name or ''}".strip()
+                    
+                    # Collect all CPT codes and descriptions
+                    cpt_codes = []
+                    descriptions = []
+                    dos_dates = []
+                    
+                    for line_item in line_items:
+                        if line_item.cpt:
+                            cpt_codes.append(line_item.cpt)
+                        if line_item.description:
+                            descriptions.append(line_item.description)
+                        if line_item.dos:
+                            formatted_date = format_dos_date(line_item.dos)
+                            if formatted_date and formatted_date not in dos_dates:
+                                dos_dates.append(formatted_date)
+                    
+                    # Get provider billing name
+                    provider_billing_name = 'N/A'
+                    if order.provider_id:
+                        try:
+                            provider = Provider.objects.get(primary_key=order.provider_id)
+                            provider_billing_name = provider.name or 'N/A'
+                        except Provider.DoesNotExist:
+                            pass
+                    
+                    # Create consolidated result
+                    search_results.append({
+                        'order': order,
+                        'patient_name': patient_name,
+                            'patient_first_name': order.patient_last_name,
+                            'patient_last_name': order.patient_first_name,
+                        'cpt_codes': ', '.join(cpt_codes) if cpt_codes else 'N/A',
+                        'cpt_list': cpt_codes,  # For individual display if needed
+                        'descriptions': ', '.join(descriptions) if descriptions else 'N/A',
+                        'dos': ', '.join(dos_dates) if dos_dates else '-',  # Already unique and formatted
+                        'order_id': order.order_id,
+                        'line_item_count': line_items.count(),
+                        'provider_billing_name': provider_billing_name,
+                    })
+    
+    # Paginate search results
+    paginator = Paginator(search_results, 20)  # Show 20 results per page
+    page_number = request.GET.get('page')
+    search_results_page = paginator.get_page(page_number)
+    
+    # Add validation errors to each bill (same as validation queue)
+    bills_with_errors = []
+    for bill in bills:
+        validation_errors = bill.get_validation_errors()
+        bills_with_errors.append({
+            'bill': bill,
+            'validation_errors': validation_errors
+        })
+    
+    # Get count of bills that can be auto-mapped
+    valid_to_map_count = ProviderBill.objects.filter(status='VALID', action='to_map').count()
+    
+    # Get distribution data for charts
+    all_filemaker_bills = ProviderBill.objects.filter(
+        status__in=['MAPPED', 'UNMAPPED']
+    ).exclude(bill_paid='Y')
+    
+    # Worker distribution
+    worker_distribution = list(all_filemaker_bills.values('assigned_worker').annotate(count=Count('id')).order_by('-count'))
+    
+    # Status distribution
+    status_distribution = list(all_filemaker_bills.values('status').annotate(count=Count('id')).order_by('-count'))
+    
+    # Worker counts
+    emma_count = all_filemaker_bills.filter(assigned_worker='Emma').count()
+    nicole_count = all_filemaker_bills.filter(assigned_worker='Nicole').count()
+    tony_count = all_filemaker_bills.filter(assigned_worker='Tony').count()
+    unassigned_count = all_filemaker_bills.filter(assigned_worker__isnull=True).count()
+    
+    context = {
+        'bills': bills,
+        'bills_with_errors': bills_with_errors,
+        'search_results': search_results_page,
+        'valid_to_map_count': valid_to_map_count,
+        'queue_type': 'FileMaker Mapping',
+        'status_filter': 'MAPPED/UNMAPPED',
+        'first_name': first_name,
+        'last_name': last_name,
+        'dos_date': dos_date,
+        'worker_distribution': worker_distribution,
+        'status_distribution': status_distribution,
+        'emma_count': emma_count,
+        'nicole_count': nicole_count,
+        'tony_count': tony_count,
+        'unassigned_count': unassigned_count,
+        'total_filemaker_bills': all_filemaker_bills.count(),
+    }
+    
+    return render(request, 'billing/filemaker_mapping_queue.html', context)
+
+
+
+
+@login_required
+def worker_assignment(request):
+    """Worker assignment view - assign unassigned FileMaker bills to workers"""
+    from datetime import datetime
+    import random
+    
+    # Get unassigned FileMaker bills (MAPPED or UNMAPPED status, no assigned worker, unpaid)
+    unassigned_bills = ProviderBill.objects.filter(
+        status__in=['MAPPED', 'UNMAPPED'],
+        assigned_worker__isnull=True
+    ).exclude(bill_paid='Y').order_by('-created_at')
+    
+    if request.method == 'POST':
+        # Get assignment parameters
+        emma_percentage = int(request.POST.get('emma_percentage', 33))
+        nicole_percentage = int(request.POST.get('nicole_percentage', 33))
+        tony_percentage = int(request.POST.get('tony_percentage', 34))
+        
+        # Validate percentages add up to 100
+        total_percentage = emma_percentage + nicole_percentage + tony_percentage
+        if total_percentage != 100:
+            messages.error(request, f'Percentages must add up to 100%. Current total: {total_percentage}%')
+            return redirect('billing:worker_assignment')
+        
+        # Get bills to assign
+        bill_ids = request.POST.getlist('bill_ids')
+        if not bill_ids:
+            messages.error(request, 'No bills selected for assignment.')
+            return redirect('billing:worker_assignment')
+        
+        bills_to_assign = ProviderBill.objects.filter(id__in=bill_ids)
+        total_bills = len(bills_to_assign)
+        
+        # Calculate assignment counts
+        emma_count = int(total_bills * emma_percentage / 100)
+        nicole_count = int(total_bills * nicole_percentage / 100)
+        tony_count = total_bills - emma_count - nicole_count  # Remaining bills go to Tony
+        
+        # Shuffle bills for random assignment
+        bills_list = list(bills_to_assign)
+        random.shuffle(bills_list)
+        
+        # Assign bills
+        assigned_count = 0
+        for i, bill in enumerate(bills_list):
+            if i < emma_count:
+                bill.assigned_worker = 'Emma'
+            elif i < emma_count + nicole_count:
+                bill.assigned_worker = 'Nicole'
+            else:
+                bill.assigned_worker = 'Tony'
+            
+            bill.updated_at = datetime.now()
+            bill.save()
+            assigned_count += 1
+        
+        messages.success(request, f'Successfully assigned {assigned_count} bills: Emma ({emma_count}), Nicole ({nicole_count}), Tony ({tony_count})')
+        return redirect('billing:worker_assignment')
+    
+    # Add validation errors to each bill
+    bills_with_errors = []
+    for bill in unassigned_bills:
+        validation_errors = bill.get_validation_errors()
+        bills_with_errors.append({
+            'bill': bill,
+            'validation_errors': validation_errors
+        })
+    
+    context = {
+        'unassigned_bills': unassigned_bills,
+        'bills_with_errors': bills_with_errors,
+        'total_unassigned': unassigned_bills.count(),
+    }
+    
+    return render(request, 'billing/worker_assignment.html', context)
+
+
+@login_required
+def worker_queue(request, worker_name):
+    """Individual worker queue - shows bills assigned to specific worker"""
+    from datetime import datetime, timedelta
+    from django.db.models import Q
+    
+    # Validate worker name
+    valid_workers = ['Emma', 'Nicole', 'Tony']
+    if worker_name not in valid_workers:
+        messages.error(request, f'Invalid worker name: {worker_name}')
+        return redirect('billing:dashboard')
+    
+    # Get search parameters
+    first_name = request.GET.get('first_name', '').strip()
+    last_name = request.GET.get('last_name', '').strip()
+    dos_date = request.GET.get('dos_date', '').strip()
+    
+    # Start with bills assigned to this worker (MAPPED or UNMAPPED, unpaid)
+    bills = ProviderBill.objects.filter(
+        assigned_worker=worker_name,
+        status__in=['MAPPED', 'UNMAPPED']
+    ).exclude(bill_paid='Y').order_by('-created_at')
+    
+    # Search results for mapping
+    search_results = []
+    
+    if first_name or last_name or dos_date:
+        # Build query for orders table
+        order_query = Q()
+        
+        if first_name:
+            order_query &= Q(patient_first_name__icontains=first_name)
+        
+        if last_name:
+            order_query &= Q(patient_last_name__icontains=last_name)
+        
+        order_query = add_date_search_to_query(order_query, dos_date)
+        
+        # Get matching orders with their line items
+        if order_query:
+            orders = Order.objects.filter(order_query).distinct()
+            search_results = []
+            
+            for order in orders:
+                line_items = OrderLineItem.objects.filter(order=order)
+                
+                if line_items.exists():
+                    patient_name = f"{order.patient_first_name or ''} {order.patient_last_name or ''}".strip()
+                    
+                    cpt_codes = []
+                    descriptions = []
+                    dos_dates = []
+                    
+                    for line_item in line_items:
+                        if line_item.cpt:
+                            cpt_codes.append(line_item.cpt)
+                        if line_item.description:
+                            descriptions.append(line_item.description)
+                        if line_item.dos:
+                            formatted_date = format_dos_date(line_item.dos)
+                            if formatted_date and formatted_date not in dos_dates:
+                                dos_dates.append(formatted_date)
+                    
+                    provider_billing_name = 'N/A'
+                    if order.provider_id:
+                        try:
+                            provider = Provider.objects.get(primary_key=order.provider_id)
+                            provider_billing_name = provider.name or 'N/A'
+                        except Provider.DoesNotExist:
+                            pass
+                    
+                    search_results.append({
+                        'order': order,
+                        'patient_name': patient_name,
+                        'patient_first_name': order.patient_last_name,
+                        'patient_last_name': order.patient_first_name,
+                        'cpt_codes': ', '.join(cpt_codes) if cpt_codes else 'N/A',
+                        'cpt_list': cpt_codes,
+                        'descriptions': ', '.join(descriptions) if descriptions else 'N/A',
+                        'dos': ', '.join(dos_dates) if dos_dates else '-',
+                        'order_id': order.order_id,
+                        'line_item_count': line_items.count(),
+                        'provider_billing_name': provider_billing_name,
+                    })
+    
+    # Paginate search results
+    paginator = Paginator(search_results, 20)
+    page_number = request.GET.get('page')
+    search_results_page = paginator.get_page(page_number)
+    
+    # Add validation errors to each bill
+    bills_with_errors = []
+    for bill in bills:
+        validation_errors = bill.get_validation_errors()
+        bills_with_errors.append({
+            'bill': bill,
+            'validation_errors': validation_errors
+        })
+    
+    context = {
+        'bills': bills,
+        'bills_with_errors': bills_with_errors,
+        'search_results': search_results_page,
+        'worker_name': worker_name,
+        'queue_type': f'{worker_name} Queue',
+        'first_name': first_name,
+        'last_name': last_name,
+        'dos_date': dos_date,
+    }
+    
+    return render(request, 'billing/worker_queue.html', context)
 
 
 @login_required
@@ -1288,6 +1628,31 @@ def approve_for_payment(request, bill_id):
 
 
 @login_required
+def approve_for_bill_review(request, bill_id):
+    """Approve bill for bill review - set status to APPROVED_FOR_BR"""
+    if request.method == 'POST':
+        try:
+            bill = ProviderBill.objects.get(id=bill_id)
+            
+            # Update bill status
+            bill.status = 'APPROVED_FOR_BR'
+            bill.updated_at = datetime.now()
+            bill.save()
+            
+            messages.success(request, f'Bill {bill_id} has been approved for bill review. Status updated to APPROVED_FOR_BR.')
+            return redirect('billing:bill_detail', bill_id=bill_id)
+            
+        except ProviderBill.DoesNotExist:
+            messages.error(request, 'Bill not found.')
+            return redirect('billing:dashboard')
+        except Exception as e:
+            messages.error(request, f'Error approving bill for bill review: {str(e)}')
+            return redirect('billing:bill_detail', bill_id=bill_id)
+    
+    return redirect('billing:bill_detail', bill_id=bill_id)
+
+
+@login_required
 def add_bill_line_item(request, bill_id):
     """Add a new bill line item"""
     try:
@@ -1467,8 +1832,14 @@ def order_detail(request, order_id):
 
 @login_required
 def intake_queue(request):
-    """Intake queue - status = 'SCANNED' with PDF upload functionality"""
-    bills = ProviderBill.objects.filter(status='SCANNED').order_by('-created_at')
+    """Intake queue - status = 'SCANNED', 'SCRAPED', 'INVALID', and 'VALID' with PDF upload functionality"""
+    scanned_bills = ProviderBill.objects.filter(status='SCANNED').order_by('-created_at')
+    scraped_bills = ProviderBill.objects.filter(status='SCRAPED').order_by('-created_at')
+    invalid_bills = ProviderBill.objects.filter(status='INVALID').order_by('-created_at')
+    valid_to_map_bills = ProviderBill.objects.filter(status='VALID', action='to_map').order_by('-created_at')
+    
+    # Combine all types of bills for display
+    bills = list(scanned_bills) + list(scraped_bills) + list(invalid_bills) + list(valid_to_map_bills)
     
     # Add validation errors to each bill (same as other queues)
     bills_with_errors = []
@@ -1482,8 +1853,16 @@ def intake_queue(request):
     context = {
         'bills': bills,
         'bills_with_errors': bills_with_errors,
+        'scanned_bills': scanned_bills,
+        'scraped_bills': scraped_bills,
+        'invalid_bills': invalid_bills,
+        'valid_to_map_bills': valid_to_map_bills,
+        'scanned_count': scanned_bills.count(),
+        'scraped_count': scraped_bills.count(),
+        'invalid_count': invalid_bills.count(),
+        'valid_to_map_count': valid_to_map_bills.count(),
         'queue_type': 'Intake',
-        'status_filter': 'SCANNED',
+        'status_filter': 'SCANNED, SCRAPED, INVALID, and VALID (to_map)',
     }
     
     return render(request, 'billing/intake_queue.html', context)
@@ -1535,8 +1914,12 @@ def process_scans(request):
             logger.info("Ensuring jobs directory is in Python path...")
             _ensure_jobs_in_path()
             logger.info("Importing intake_scrape_django module...")
-            from intake_scrape_django import process_scanned_bills
+            from intake_scrape_django import process_scanned_bills, initialize_openai_client
             logger.info("Successfully imported intake_scrape_django")
+            
+            # Initialize OpenAI client
+            logger.info("Initializing OpenAI client...")
+            initialize_openai_client()
             
             # Get count of bills to process
             scanned_count = ProviderBill.objects.filter(status='SCANNED').count()
@@ -1564,6 +1947,191 @@ def process_scans(request):
             messages.error(request, f'Error processing scanned bills: {str(e)}')
     
     return redirect('billing:intake_queue')
+
+
+@login_required
+def process_validation(request):
+    """Process all SCRAPED bills through validation"""
+    if request.method == 'POST':
+        try:
+            # Import the validation processor
+            logger.info("Ensuring jobs directory is in Python path...")
+            _ensure_jobs_in_path()
+            logger.info("Importing intake_scrape_django module...")
+            from intake_scrape_django import process_scraped_validation, initialize_openai_client
+            logger.info("Successfully imported intake_scrape_django")
+            
+            # Initialize OpenAI client
+            logger.info("Initializing OpenAI client...")
+            initialize_openai_client()
+            
+            # Get count of bills to process
+            scraped_count = ProviderBill.objects.filter(status='SCRAPED').count()
+            
+            if scraped_count == 0:
+                messages.info(request, 'No bills with SCRAPED status found to validate.')
+                return redirect('billing:intake_queue')
+            
+            # Get limit from request if provided
+            limit = request.POST.get('limit')
+            limit = int(limit) if limit and limit.isdigit() else None
+            
+            # Process the bills
+            logger.info(f"Starting validation of {scraped_count} scraped bills")
+            process_scraped_validation(limit=limit)
+            
+            # Get updated counts
+            remaining_scraped = ProviderBill.objects.filter(status='SCRAPED').count()
+            new_valid = ProviderBill.objects.filter(status='VALID').count()
+            new_invalid = ProviderBill.objects.filter(status='INVALID').count()
+            
+            processed_count = scraped_count - remaining_scraped
+            
+            messages.success(
+                request, 
+                f'Validation processing complete! '
+                f'Processed {processed_count} bills. '
+                f'{remaining_scraped} bills remain SCRAPED. '
+                f'{new_valid} bills are now VALID. '
+                f'{new_invalid} bills are now INVALID.'
+            )
+            
+        except Exception as e:
+            logger.error(f"Error processing scraped bills for validation: {e}")
+            messages.error(request, f'Error processing validation: {str(e)}')
+    
+    return redirect('billing:intake_queue')
+
+
+@login_required
+def process_mapping(request):
+    """Process all VALID bills with action='to_map' through mapping"""
+    if request.method == 'POST':
+        try:
+            # Import the mapping processor
+            logger.info("Ensuring jobs directory is in Python path...")
+            _ensure_jobs_in_path()
+            logger.info("Importing map_bill module...")
+            from map_bill import process_mapping as map_bill_process
+            logger.info("Successfully imported map_bill")
+            
+            # Get count of bills to process
+            valid_to_map_count = ProviderBill.objects.filter(status='VALID', action='to_map').count()
+            
+            if valid_to_map_count == 0:
+                messages.info(request, 'No bills with VALID status and to_map action found to map.')
+                return redirect('billing:intake_queue')
+            
+            # Get limit from request if provided
+            limit = request.POST.get('limit')
+            limit = int(limit) if limit and limit.isdigit() else None
+            
+            # Process the bills
+            logger.info(f"Starting mapping of {valid_to_map_count} valid bills")
+            map_bill_process()
+            
+            # Get updated counts
+            remaining_valid_to_map = ProviderBill.objects.filter(status='VALID', action='to_map').count()
+            new_mapped = ProviderBill.objects.filter(status='MAPPED').count()
+            new_unmapped = ProviderBill.objects.filter(status='UNMAPPED').count()
+            new_duplicate = ProviderBill.objects.filter(status='DUPLICATE').count()
+            
+            processed_count = valid_to_map_count - remaining_valid_to_map
+            
+            messages.success(
+                request, 
+                f'Mapping processing complete! '
+                f'Processed {processed_count} bills. '
+                f'{remaining_valid_to_map} bills remain VALID with to_map action. '
+                f'{new_mapped} bills are now MAPPED. '
+                f'{new_unmapped} bills are now UNMAPPED. '
+                f'{new_duplicate} bills are marked as DUPLICATE.'
+            )
+            
+        except Exception as e:
+            logger.error(f"Error processing valid bills for mapping: {e}")
+            messages.error(request, f'Error processing mapping: {str(e)}')
+    
+    return redirect('billing:intake_queue')
+
+
+@login_required
+def process_second_pass(request):
+    """Process all INVALID bills through second pass extraction"""
+    if request.method == 'POST':
+        try:
+            # Import the second pass processor
+            logger.info("Ensuring jobs directory is in Python path...")
+            _ensure_jobs_in_path()
+            logger.info("Importing intake_scrape_django_2ndpass module...")
+            from intake_scrape_django_2ndpass import process_invalid_bills
+            logger.info("Successfully imported intake_scrape_django_2ndpass")
+            
+            # Get count of bills to process (only INVALID, not INVALID_2)
+            invalid_count = ProviderBill.objects.filter(status='INVALID').count()
+            
+            if invalid_count == 0:
+                messages.info(request, 'No bills with INVALID status found to process.')
+                return redirect('billing:validation_queue')
+            
+            # Get limit from request if provided
+            limit = request.POST.get('limit')
+            limit = int(limit) if limit and limit.isdigit() else None
+            
+            # Check if processing a specific bill
+            bill_id = request.POST.get('bill_id')
+            if bill_id:
+                # Process only the specific bill
+                logger.info(f"Starting second pass processing for specific bill: {bill_id}")
+                try:
+                    # Import the second pass processor function for single bills
+                    from intake_scrape_django_2ndpass import process_single_bill_2nd_pass
+                    
+                    # Get the bill to find its source file and error
+                    bill = ProviderBill.objects.get(id=bill_id, status='INVALID')
+                    pdf_key = f"data/ProviderBills/pdf/archive/{bill_id}.pdf"
+                    
+                    success = process_single_bill_2nd_pass(bill_id, pdf_key, bill.last_error)
+                    
+                    if success:
+                        messages.success(request, f'Second pass processing completed successfully for bill {bill_id}.')
+                    else:
+                        messages.warning(request, f'Second pass processing failed for bill {bill_id}.')
+                        
+                except ProviderBill.DoesNotExist:
+                    messages.error(request, f'Bill {bill_id} not found or not in INVALID status.')
+                except Exception as e:
+                    logger.error(f"Error processing single bill {bill_id} with second pass: {e}")
+                    messages.error(request, f'Error processing bill {bill_id}: {str(e)}')
+                
+                # Redirect back to bill detail for single bill processing
+                return redirect('billing:bill_detail', bill_id=bill_id)
+            else:
+                # Process all bills or with limit
+                logger.info(f"Starting second pass processing of {invalid_count} invalid bills")
+                process_invalid_bills(limit=limit)
+            
+            # Get updated counts
+            remaining_invalid = ProviderBill.objects.filter(status='INVALID').count()
+            total_invalid_2 = ProviderBill.objects.filter(status='INVALID_2').count()
+            total_valid = ProviderBill.objects.filter(status='VALID').count()
+            
+            processed_count = invalid_count - remaining_invalid
+            
+            messages.success(
+                request, 
+                f'Second pass processing complete! '
+                f'Processed {processed_count} bills. '
+                f'{remaining_invalid} bills remain INVALID. '
+                f'{total_valid} total bills are now VALID. '
+                f'{total_invalid_2} total bills are INVALID_2 (second pass failed).'
+            )
+            
+        except Exception as e:
+            logger.error(f"Error processing invalid bills with second pass: {e}")
+            messages.error(request, f'Error processing invalid bills: {str(e)}')
+    
+    return redirect('billing:validation_queue')
 
 
 @login_required
