@@ -19,6 +19,8 @@ class ProviderBill(models.Model):
         ('UNMAPPED', 'Unmapped'),
         ('REVIEW_FLAG', 'Review Flag'),
         ('FLAGGED', 'Flagged'),
+        ('SCANNED', 'Scanned'),
+        ('SCRAPED', 'Scraped'),
     ]
     
     ACTION_CHOICES = [
@@ -26,6 +28,8 @@ class ProviderBill(models.Model):
         ('to_review', 'To Review'),
         ('apply_rate', 'Apply Rate'),
         ('validate', 'Validate'),
+        ('to_validate', 'To Validate'),
+        ('add_line_items', 'Add Line Items'),
         ('to_map', 'To Map'),
         ('map_provider', 'Map Provider'),
         ('correct_data', 'Correct Data'),

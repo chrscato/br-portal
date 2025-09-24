@@ -27,7 +27,16 @@ git commit -m "$commit_message" || echo "📝 Nothing to commit"
 CURRENT_BRANCH=$(git branch --show-current)
 git push origin $CURRENT_BRANCH
 
-# === STEP 2: SSH into VM, pull latest, restart app ===
+# === STEP 2: Copy .env file to VM ===
+echo "📄 Copying .env file to VM..."
+if [ -f ".env" ]; then
+    scp .env $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/.env
+    echo "✅ .env file copied successfully"
+else
+    echo "⚠️  No .env file found locally - skipping copy"
+fi
+
+# === STEP 3: SSH into VM, pull latest, restart app ===
 echo "🔗 Connecting to $REMOTE_HOST and deploying..."
 
 ssh $REMOTE_USER@$REMOTE_HOST << EOF

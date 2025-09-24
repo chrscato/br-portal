@@ -1,0 +1,301 @@
+{
+    "system": "You are an expert medical billing AI specializing in extracting structured data from CMS-1500 (HCFA-1500) medical claim forms. You have extensive knowledge of medical billing standards, CPT codes, ICD-10 diagnosis codes, and healthcare data formats. You understand that HCFA-1500 forms have a standardized layout with 33 numbered boxes. CRITICAL: Service lines (Box 24) are the most important data to extract and contain CPT procedure codes, NOT diagnosis codes. CPT codes are EXACTLY 5 characters: either all digits (00000-99999) or 1 letter followed by 4 digits (A0000-Z9999). Never confuse ICD-10 diagnosis codes (which contain periods like M25.512) with CPT procedure codes.",
+    
+    "user_hint": "Form version: CMS-1500 (02-12). Extract structured data from this medical claim form using a multi-pass approach. CRITICAL REQUIREMENTS: 1) You MUST extract service lines from Box 24 - this is the table in the middle section of the form. 2) CPT codes are procedure codes (5 characters), NOT diagnosis codes. 3) If initial extraction fails, search the entire form for valid CPT codes and charges. 4) Look for common OCR errors: 'S' misread as '5', 'O' as '0', 'B' as '8', 'I' as '1'. Return ONLY valid JSON matching the extract_hcfa1500 schema.",
+    
+    "extraction_strategy": {
+      "multi_pass": true,
+      "passes": [
+        {
+          "pass": 1,
+          "name": "form_identification",
+          "focus": "Verify this is an HCFA-1500/CMS-1500 form and identify version",
+          "instructions": "Look for 'CMS-1500' or 'HCFA' text, typically in top corners. Identify form version (02-12 is current). Check for 'APPROVED OMB-0938-1197' or similar identifiers."
+        },
+        {
+          "pass": 2,
+          "name": "zone_mapping",
+          "focus": "Map the standard HCFA-1500 box locations",
+          "instructions": "Mentally divide the form into standard zones: Boxes 1-13 (top section - patient/insurance info), Box 24 (middle section - service line table with 6 rows A-F), Boxes 25-33 (bottom section - provider/billing info). Box 24 is CRITICAL and contains columns for: Date of Service, Place of Service, EMG, CPT/HCPCS, Modifier, Diagnosis Pointer, Charges, Days/Units, EPSDT, ID Qual, Rendering Provider ID."
+        },
+        {
+          "pass": 3,
+          "name": "service_line_extraction",
+          "focus": "Extract Box 24 service lines with OCR correction",
+          "instructions": "Box 24 is in the MIDDLE of the form, typically rows 24A through 24F. Each row contains: Column A (Date), Column B (Place), Column C (EMG), Column D (CPT/HCPCS code - 5 characters), Column D modifiers (up to 4 two-digit codes), Column E (Diagnosis Pointer - letters A,B,C,D), Column F (Charges - dollar amount), Column G (Days/Units - usually 1). Apply OCR corrections for common errors. If a CPT code appears invalid, check if characters were misread."
+        },
+        {
+          "pass": 4,
+          "name": "fallback_extraction",
+          "focus": "If Box 24 extraction failed, search entire form",
+          "instructions": "If no valid service lines found in Box 24, search the ENTIRE form for: 1) Any 5-character codes matching CPT format (digits only or letter+4 digits), 2) Dollar amounts that could be charges, 3) Medical procedure terminology. Check margins, headers, and any handwritten additions. Create service lines from any found data."
+        }
+      ]
+    },
+    
+    "ocr_correction_rules": {
+      "character_substitutions": {
+        "5": ["S"],
+        "0": ["O", "o"],
+        "8": ["B"],
+        "1": ["I", "l", "|"],
+        "6": ["b"],
+        "9": ["g"],
+        "2": ["Z"],
+        "7": ["T"],
+        "4": ["A"]
+      },
+      "cpt_specific_corrections": [
+        "If you see '992I3', it's likely '99213' (common office visit code)",
+        "If you see '9921S', it's likely '99215' (comprehensive office visit)",
+        "If you see '8O648', it's likely '80048' (basic metabolic panel)",
+        "If you see '7321O', it's likely '73210' (MRI code)",
+        "HCPCS codes starting with letters are common: J codes (drugs), G codes (procedures), A codes (ambulance/supplies)"
+      ],
+      "charge_corrections": [
+        "Decimal points may be missing: '15000' could be '$150.00' or '$1500.00' - use context",
+        "Spaces in numbers: '1 234 56' likely means '$1234.56'",
+        "Comma/period confusion: European vs US formatting"
+      ]
+    },
+    
+    "functions": [
+      {
+        "name": "extract_hcfa1500",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "form_metadata": {
+              "type": "object",
+              "properties": {
+                "form_version": { "type": ["string", "null"] },
+                "form_quality": { "type": "string", "enum": ["excellent", "good", "fair", "poor"] },
+                "extraction_confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+              }
+            },
+            "patient_info": {
+              "type": "object",
+              "properties": {
+                "patient_name": { "type": ["string", "null"] },
+                "patient_dob": { "type": ["string", "null"] },
+                "patient_sex": { "type": ["string", "null"], "enum": ["M", "F", null] },
+                "patient_address": { "type": ["string", "null"] },
+                "patient_city": { "type": ["string", "null"] },
+                "patient_state": { "type": ["string", "null"] },
+                "patient_zip": { "type": ["string", "null"] },
+                "patient_phone": { "type": ["string", "null"] },
+                "insured_name": { "type": ["string", "null"] },
+                "patient_relationship": { "type": ["string", "null"] },
+                "insurance_plan_name": { "type": ["string", "null"] },
+                "insured_id_number": { "type": ["string", "null"] }
+              },
+              "required": ["patient_name", "patient_dob", "patient_zip"]
+            },
+            "diagnosis_codes": {
+              "type": "object",
+              "properties": {
+                "diagnosis_a": { "type": ["string", "null"] },
+                "diagnosis_b": { "type": ["string", "null"] },
+                "diagnosis_c": { "type": ["string", "null"] },
+                "diagnosis_d": { "type": ["string", "null"] },
+                "diagnosis_e": { "type": ["string", "null"] },
+                "diagnosis_f": { "type": ["string", "null"] },
+                "diagnosis_g": { "type": ["string", "null"] },
+                "diagnosis_h": { "type": ["string", "null"] },
+                "diagnosis_i": { "type": ["string", "null"] },
+                "diagnosis_j": { "type": ["string", "null"] },
+                "diagnosis_k": { "type": ["string", "null"] },
+                "diagnosis_l": { "type": ["string", "null"] }
+              },
+              "description": "ICD-10 diagnosis codes from Box 21. These are different from CPT codes."
+            },
+            "service_lines": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "line_number": { "type": "string", "enum": ["A", "B", "C", "D", "E", "F"] },
+                  "date_of_service_from": { "type": ["string", "null"] },
+                  "date_of_service_to": { "type": ["string", "null"] },
+                  "place_of_service": { "type": ["string", "null"] },
+                  "emg": { "type": ["string", "null"] },
+                  "cpt_code": { 
+                    "type": ["string", "null"],
+                    "pattern": "^([0-9]{5}|[A-Z][0-9]{4}|unknown)$"
+                  },
+                  "modifiers": {
+                    "type": "array",
+                    "items": { "type": "string", "pattern": "^[A-Z0-9]{2}$" },
+                    "maxItems": 4
+                  },
+                  "diagnosis_pointer": { 
+                    "type": ["string", "null"],
+                    "pattern": "^[A-L]+$"
+                  },
+                  "charge_amount": { "type": ["string", "null"] },
+                  "units": { "type": ["integer", "null"], "minimum": 1 },
+                  "epsdt": { "type": ["string", "null"] },
+                  "qualifier": { "type": ["string", "null"] },
+                  "rendering_provider_id": { "type": ["string", "null"] },
+                  "extraction_confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+                },
+                "required": ["cpt_code", "charge_amount"]
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "description": "CRITICAL: Box 24 service lines. Must contain at least one valid service line."
+            },
+            "billing_info": {
+              "type": "object",
+              "properties": {
+                "federal_tax_id": { "type": ["string", "null"] },
+                "patient_account_no": { "type": ["string", "null"] },
+                "accept_assignment": { "type": ["boolean", "null"] },
+                "total_charge": { "type": ["string", "null"] },
+                "amount_paid": { "type": ["string", "null"] },
+                "balance_due": { "type": ["string", "null"] },
+                "service_facility_name": { "type": ["string", "null"] },
+                "service_facility_address": { "type": ["string", "null"] },
+                "service_facility_city_state_zip": { "type": ["string", "null"] },
+                "service_facility_npi": { "type": ["string", "null"] },
+                "billing_provider_name": { "type": ["string", "null"] },
+                "billing_provider_address": { "type": ["string", "null"] },
+                "billing_provider_city_state_zip": { "type": ["string", "null"] },
+                "billing_provider_phone": { "type": ["string", "null"] },
+                "billing_provider_npi": { "type": ["string", "null"] },
+                "billing_provider_tin": { "type": ["string", "null"] },
+                "billing_provider_other_id": { "type": ["string", "null"] }
+              },
+              "required": ["total_charge"]
+            },
+            "additional_info": {
+              "type": "object",
+              "properties": {
+                "prior_authorization_number": { "type": ["string", "null"] },
+                "referring_provider_name": { "type": ["string", "null"] },
+                "referring_provider_npi": { "type": ["string", "null"] },
+                "additional_claim_info": { "type": ["string", "null"] },
+                "outside_lab": { "type": ["boolean", "null"] },
+                "outside_lab_charges": { "type": ["string", "null"] }
+              }
+            }
+          },
+          "required": ["patient_info", "service_lines", "billing_info"]
+        }
+      }
+    ],
+    
+    "box_locations": {
+      "1": "Insurance type checkboxes (Medicare, Medicaid, etc.)",
+      "2": "Patient's name (Last, First, MI)",
+      "3": "Patient's birth date and sex",
+      "4": "Insured's name",
+      "5": "Patient's address",
+      "6": "Patient relationship to insured",
+      "7": "Insured's address",
+      "8": "Reserved for NUCC use",
+      "9": "Other insured's name",
+      "10": "Is patient's condition related to",
+      "11": "Insured's policy/group number",
+      "12": "Patient's or authorized person's signature",
+      "13": "Insured's or authorized person's signature",
+      "14": "Date of current illness/injury/pregnancy",
+      "15": "Other date",
+      "16": "Dates unable to work",
+      "17": "Name of referring provider",
+      "18": "Hospitalization dates",
+      "19": "Additional claim information",
+      "20": "Outside lab",
+      "21": "Diagnosis codes (ICD-10)",
+      "22": "Resubmission code",
+      "23": "Prior authorization number",
+      "24": "SERVICE LINES TABLE (6 rows, A-F)",
+      "25": "Federal tax ID number",
+      "26": "Patient's account number",
+      "27": "Accept assignment",
+      "28": "Total charge",
+      "29": "Amount paid",
+      "30": "Balance due",
+      "31": "Signature of physician",
+      "32": "Service facility location",
+      "33": "Billing provider info and phone"
+    },
+    
+    "validation_rules": {
+      "cpt_codes": [
+        "MUST be exactly 5 characters",
+        "Format: either all digits (00000-99999) OR one letter + 4 digits (A0000-Z9999)",
+        "Common ranges: 99201-99499 (E&M), 70000-79999 (Radiology), 80000-89999 (Laboratory)",
+        "HCPCS: A0000-V9999 (supplies, ambulance, vision, hearing)",
+        "J codes are drugs/injections, G codes are temporary procedures",
+        "Never accept ICD-10 codes (contain periods) as CPT codes"
+      ],
+      "service_line_rules": [
+        "Maximum 6 service lines per form (24A through 24F)",
+        "Each line must have at least CPT code and charge",
+        "Diagnosis pointers refer to Box 21 diagnoses (A,B,C,D,etc.)",
+        "Place of Service: 11=Office, 21=Hospital Inpatient, 22=Hospital Outpatient, 23=ER",
+        "Modifiers are 2-digit codes (26=Professional component, TC=Technical component, LT/RT=Left/Right)"
+      ],
+      "charge_rules": [
+        "Charges should be positive amounts",
+        "Total charge (Box 28) should equal sum of line charges",
+        "Format as currency: $XXXX.XX",
+        "If charge seems unreasonably high (>$10,000), check for decimal point errors"
+      ]
+    },
+    
+    "error_recovery": {
+      "missing_service_lines": [
+        "Search for any table-like structure in the middle section",
+        "Look for column headers like 'CPT', 'PROCEDURE', 'CHARGE'",
+        "Check for handwritten additions in margins",
+        "If only total charge found, create single service line with 'unknown' CPT"
+      ],
+      "invalid_cpt_codes": [
+        "Apply OCR corrections for common misreads",
+        "Check if it's an ICD-10 code mistakenly in CPT field",
+        "Look for CPT code in procedure description field",
+        "Use 'unknown' only as last resort"
+      ],
+      "missing_patient_info": [
+        "Check Box 4 (insured) if Box 2 (patient) is unclear",
+        "Patient and insured may be the same person",
+        "Look for patient info in service facility section"
+      ]
+    },
+    
+    "quality_indicators": {
+      "high_confidence": [
+        "All 6 service lines have valid CPT codes",
+        "Total charge matches sum of line charges",
+        "All required boxes have data",
+        "NPI numbers are 10 digits",
+        "Dates are consistent and reasonable"
+      ],
+      "low_confidence": [
+        "Multiple 'unknown' CPT codes",
+        "Total charge doesn't match line sum",
+        "Missing critical boxes like patient name",
+        "Dates in future or very old (>2 years)",
+        "Many fields extracted as null"
+      ]
+    },
+    
+    "output_requirements": [
+      "Return ONLY valid JSON matching the schema",
+      "No markdown formatting or backticks",
+      "No explanatory text outside JSON",
+      "Include extraction_confidence scores",
+      "Set form_quality based on readability",
+      "Use null for missing optional fields, not empty strings",
+      "Always attempt to extract something rather than failing completely"
+    ],
+    
+    "model_settings": {
+      "temperature": 0.0,
+      "max_tokens": 4000,
+      "model": "gpt-4o",
+      "seed": 42
+    }
+  }

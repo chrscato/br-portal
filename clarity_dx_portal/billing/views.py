@@ -10,10 +10,31 @@ from django.db.models import Count, Q
 from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.paginator import Paginator
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 from datetime import datetime
 import json
+import os
+import sys
+import logging
 from .models import ProviderBill, BillLineItem, Order, OrderLineItem, Provider, PPO, OTA
 from .s3_utils import s3_pdf_service
+
+logger = logging.getLogger(__name__)
+
+
+def _ensure_jobs_in_path():
+    """Ensure the jobs directory is in the Python path for imports."""
+    jobs_path = os.path.join(os.path.dirname(__file__), '..', '..', 'jobs')
+    jobs_path = os.path.abspath(jobs_path)
+    logger.debug(f"Jobs path calculated: {jobs_path}")
+    logger.debug(f"Jobs path exists: {os.path.exists(jobs_path)}")
+    if jobs_path not in sys.path:
+        sys.path.insert(0, jobs_path)
+        logger.debug(f"Added {jobs_path} to sys.path")
+    else:
+        logger.debug(f"{jobs_path} already in sys.path")
+    return jobs_path
 
 
 def format_dos_date(dos_string):
@@ -142,7 +163,8 @@ def dashboard(request):
     paid_bills = ProviderBill.objects.filter(bill_paid='Y')
     paid_status_dist = list(paid_bills.values('status').annotate(count=Count('id')).order_by('-count'))
     
-    # Queue counts for the 5 core views
+    # Queue counts for the 6 core views (including intake)
+    intake_count = ProviderBill.objects.filter(status='SCANNED').count()
     validation_count = ProviderBill.objects.filter(status='INVALID').count()
     mapping_count = ProviderBill.objects.filter(status__in=['UNMAPPED', 'VALID']).count()
     correction_count = ProviderBill.objects.filter(status__in=['REVIEW_FLAG', 'FLAGGED']).count()
@@ -159,6 +181,7 @@ def dashboard(request):
         'paid_bills_count': paid_bills.count(),
         'unpaid_status_dist': unpaid_status_dist,
         'paid_status_dist': paid_status_dist,
+        'intake_count': intake_count,
         'validation_count': validation_count,
         'mapping_count': mapping_count,
         'correction_count': correction_count,
@@ -1440,3 +1463,124 @@ def order_detail(request, order_id):
     except Exception as e:
         messages.error(request, f'Error loading order: {str(e)}')
         return redirect('billing:order_search')
+
+
+@login_required
+def intake_queue(request):
+    """Intake queue - status = 'SCANNED' with PDF upload functionality"""
+    bills = ProviderBill.objects.filter(status='SCANNED').order_by('-created_at')
+    
+    # Add validation errors to each bill (same as other queues)
+    bills_with_errors = []
+    for bill in bills:
+        validation_errors = bill.get_validation_errors()
+        bills_with_errors.append({
+            'bill': bill,
+            'validation_errors': validation_errors
+        })
+    
+    context = {
+        'bills': bills,
+        'bills_with_errors': bills_with_errors,
+        'queue_type': 'Intake',
+        'status_filter': 'SCANNED',
+    }
+    
+    return render(request, 'billing/intake_queue.html', context)
+
+
+@login_required
+def upload_pdf_batch(request):
+    """Upload and process a PDF batch file"""
+    if request.method == 'POST':
+        uploaded_file = request.FILES.get('pdf_file')
+        
+        if not uploaded_file:
+            messages.error(request, 'No PDF file selected.')
+            return redirect('billing:intake_queue')
+        
+        # Validate file type
+        if not uploaded_file.name.lower().endswith('.pdf'):
+            messages.error(request, 'Please upload a PDF file.')
+            return redirect('billing:intake_queue')
+        
+        try:
+            # Import the PDF processor
+            _ensure_jobs_in_path()
+            from pdf_intake_split import PDFIntakeProcessor
+            
+            # Process the uploaded PDF
+            processor = PDFIntakeProcessor()
+            created_bill_ids = processor.process_uploaded_pdf(uploaded_file, request.user.username)
+            
+            messages.success(
+                request, 
+                f'Successfully processed PDF "{uploaded_file.name}". '
+                f'Created {len(created_bill_ids)} individual bill records.'
+            )
+            
+        except Exception as e:
+            logger.error(f"Error processing PDF upload: {e}")
+            messages.error(request, f'Error processing PDF: {str(e)}')
+    
+    return redirect('billing:intake_queue')
+
+
+@login_required
+def process_scans(request):
+    """Process all SCANNED bills through LLM extraction"""
+    if request.method == 'POST':
+        try:
+            # Import the intake scrape processor
+            logger.info("Ensuring jobs directory is in Python path...")
+            _ensure_jobs_in_path()
+            logger.info("Importing intake_scrape_django module...")
+            from intake_scrape_django import process_scanned_bills
+            logger.info("Successfully imported intake_scrape_django")
+            
+            # Get count of bills to process
+            scanned_count = ProviderBill.objects.filter(status='SCANNED').count()
+            
+            if scanned_count == 0:
+                messages.info(request, 'No bills with SCANNED status found to process.')
+                return redirect('billing:intake_queue')
+            
+            # Process the bills
+            logger.info(f"Starting processing of {scanned_count} scanned bills")
+            process_scanned_bills()
+            
+            # Get updated count
+            remaining_count = ProviderBill.objects.filter(status='SCANNED').count()
+            processed_count = scanned_count - remaining_count
+            
+            messages.success(
+                request, 
+                f'Successfully processed {processed_count} bills. '
+                f'{remaining_count} bills remain in SCANNED status.'
+            )
+            
+        except Exception as e:
+            logger.error(f"Error processing scanned bills: {e}")
+            messages.error(request, f'Error processing scanned bills: {str(e)}')
+    
+    return redirect('billing:intake_queue')
+
+
+@login_required
+def test_import(request):
+    """Test function to verify imports are working"""
+    try:
+        _ensure_jobs_in_path()
+        from intake_scrape_django import process_scanned_bills
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Import successful',
+            'jobs_path': _ensure_jobs_in_path()
+        })
+    except Exception as e:
+        import traceback
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e),
+            'traceback': traceback.format_exc()
+        })

@@ -90,6 +90,23 @@
 <div class="row mb-4">
     <div class="col-md-3">
         <div class="card queue-card h-100">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="fas fa-file-pdf"></i> Intake Queue</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Newly scanned bills (Status: SCANNED)</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="badge bg-secondary">{{ intake_count }} bills</span>
+                    <a href="{% url 'billing:intake_queue' %}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-arrow-right"></i> Process
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card queue-card h-100">
             <div class="card-header bg-warning text-dark">
                 <h5 class="mb-0"><i class="fas fa-search"></i> Validation Queue</h5>
             </div>
