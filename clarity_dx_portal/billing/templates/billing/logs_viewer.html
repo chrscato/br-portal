@@ -1,0 +1,543 @@
+{% extends 'billing/base.html' %}
+{% load static %}
+
+{% block title %}Job Logs Viewer{% endblock %}
+
+{% block extra_css %}
+<style>
+.log-entry {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    margin-bottom: 2px;
+    padding: 2px 5px;
+    border-radius: 3px;
+}
+
+.log-entry.info {
+    background-color: #f8f9fa;
+    color: #495057;
+}
+
+.log-entry.success {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.log-entry.warning {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.log-entry.error {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.log-viewer {
+    max-height: 500px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 10px;
+    background-color: #f8f9fa;
+}
+
+.job-card {
+    transition: all 0.3s ease;
+}
+
+.job-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.status-badge {
+    font-size: 0.8em;
+}
+
+.progress-sm {
+    height: 8px;
+}
+
+.log-filter {
+    background-color: #e9ecef;
+    border-radius: 0.375rem;
+    padding: 10px;
+    margin-bottom: 15px;
+}
+
+.stats-card {
+    text-align: center;
+}
+
+.stats-number {
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+.refresh-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-file-alt me-2"></i>Job Logs Viewer</h1>
+                <div>
+                    <button class="btn btn-outline-primary" onclick="refreshLogs()">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="clearFilters()">
+                        <i class="fas fa-filter me-1"></i>Clear Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card stats-card">
+                        <div class="card-body">
+                            <div class="stats-number text-primary" id="total-jobs">0</div>
+                            <div class="text-muted">Total Jobs</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stats-card">
+                        <div class="card-body">
+                            <div class="stats-number text-success" id="completed-jobs">0</div>
+                            <div class="text-muted">Completed</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stats-card">
+                        <div class="card-body">
+                            <div class="stats-number text-warning" id="running-jobs">0</div>
+                            <div class="text-muted">Running</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stats-card">
+                        <div class="card-body">
+                            <div class="stats-number text-danger" id="failed-jobs">0</div>
+                            <div class="text-muted">Failed</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="log-filter">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label for="job-type-filter" class="form-label">Job Type</label>
+                        <select class="form-select" id="job-type-filter" onchange="filterLogs()">
+                            <option value="">All Types</option>
+                            <option value="process_scans">Process Scans</option>
+                            <option value="process_validation">Process Validation</option>
+                            <option value="process_second_pass">Second Pass</option>
+                            <option value="upload_batch">Upload Batch</option>
+                            <option value="process_mapping">Process Mapping</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="status-filter" class="form-label">Status</label>
+                        <select class="form-select" id="status-filter" onchange="filterLogs()">
+                            <option value="">All Statuses</option>
+                            <option value="running">Running</option>
+                            <option value="completed">Completed</option>
+                            <option value="failed">Failed</option>
+                            <option value="pending">Pending</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="date-filter" class="form-label">Date Range</label>
+                        <select class="form-select" id="date-filter" onchange="filterLogs()">
+                            <option value="1">Last 24 hours</option>
+                            <option value="7" selected>Last 7 days</option>
+                            <option value="30">Last 30 days</option>
+                            <option value="all">All time</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="search-filter" class="form-label">Search</label>
+                        <input type="text" class="form-control" id="search-filter" placeholder="Search logs..." onkeyup="filterLogs()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Jobs List -->
+            <div class="row" id="jobs-container">
+                <!-- Jobs will be loaded here -->
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loading-indicator" class="text-center" style="display: none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading job logs...</p>
+            </div>
+
+            <!-- No Jobs Message -->
+            <div id="no-jobs-message" class="text-center text-muted" style="display: none;">
+                <i class="fas fa-inbox fa-3x mb-3"></i>
+                <h4>No job logs found</h4>
+                <p>Run some job operations to see logs here.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Job Details Modal -->
+<div class="modal fade" id="jobDetailsModal" tabindex="-1" aria-labelledby="jobDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="jobDetailsModalLabel">Job Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Job Information</h6>
+                        <table class="table table-sm">
+                            <tr><td><strong>Job ID:</strong></td><td id="modal-job-id">-</td></tr>
+                            <tr><td><strong>Type:</strong></td><td id="modal-job-type">-</td></tr>
+                            <tr><td><strong>Status:</strong></td><td id="modal-job-status">-</td></tr>
+                            <tr><td><strong>Start Time:</strong></td><td id="modal-job-start">-</td></tr>
+                            <tr><td><strong>End Time:</strong></td><td id="modal-job-end">-</td></tr>
+                            <tr><td><strong>Duration:</strong></td><td id="modal-job-duration">-</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Progress</h6>
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span>Progress</span>
+                                <span id="modal-progress-text">0%</span>
+                            </div>
+                            <div class="progress progress-sm">
+                                <div class="progress-bar" id="modal-progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <table class="table table-sm">
+                            <tr><td><strong>Total Items:</strong></td><td id="modal-total-items">-</td></tr>
+                            <tr><td><strong>Processed:</strong></td><td id="modal-processed-items">-</td></tr>
+                            <tr><td><strong>Successful:</strong></td><td id="modal-successful-items">-</td></tr>
+                            <tr><td><strong>Failed:</strong></td><td id="modal-failed-items">-</td></tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="mt-3">
+                    <h6>Log Content</h6>
+                    <div class="log-viewer" id="modal-log-content">
+                        <!-- Log content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="downloadLog()">Download Log</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Refresh Button -->
+<button class="btn btn-primary rounded-circle refresh-btn" onclick="refreshLogs()" title="Refresh Logs">
+    <i class="fas fa-sync-alt"></i>
+</button>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allJobs = [];
+let filteredJobs = [];
+let currentJobId = null;
+
+// Load logs on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadLogs();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(loadLogs, 30000);
+});
+
+async function loadLogs() {
+    showLoading(true);
+    
+    try {
+        // Get job summary
+        const summaryResponse = await fetch('/billing/api/jobs/summary/');
+        const summaryData = await summaryResponse.json();
+        
+        if (summaryData.success) {
+            updateStatistics(summaryData.summary);
+        }
+        
+        // Get active jobs
+        const activeResponse = await fetch('/billing/api/jobs/active/');
+        const activeData = await activeResponse.json();
+        
+        if (activeData.success) {
+            allJobs = activeData.active_jobs;
+            filterLogs();
+        } else {
+            showNoJobs();
+        }
+        
+    } catch (error) {
+        console.error('Error loading logs:', error);
+        showError('Failed to load job logs');
+    } finally {
+        showLoading(false);
+    }
+}
+
+function updateStatistics(summary) {
+    document.getElementById('total-jobs').textContent = summary.total_jobs_today || 0;
+    document.getElementById('completed-jobs').textContent = summary.job_types.completed || 0;
+    document.getElementById('running-jobs').textContent = summary.job_types.running || 0;
+    document.getElementById('failed-jobs').textContent = summary.job_types.failed || 0;
+}
+
+function filterLogs() {
+    const jobType = document.getElementById('job-type-filter').value;
+    const status = document.getElementById('status-filter').value;
+    const dateRange = document.getElementById('date-filter').value;
+    const searchTerm = document.getElementById('search-filter').value.toLowerCase();
+    
+    filteredJobs = allJobs.filter(job => {
+        // Filter by job type
+        if (jobType && job.job_type !== jobType) return false;
+        
+        // Filter by status
+        if (status && job.status !== status) return false;
+        
+        // Filter by date range
+        if (dateRange !== 'all') {
+            const jobDate = new Date(job.start_time);
+            const cutoffDate = new Date();
+            cutoffDate.setDate(cutoffDate.getDate() - parseInt(dateRange));
+            
+            if (jobDate < cutoffDate) return false;
+        }
+        
+        // Filter by search term
+        if (searchTerm) {
+            const searchableText = `${job.job_id} ${job.job_type} ${job.status} ${job.current_item || ''}`.toLowerCase();
+            if (!searchableText.includes(searchTerm)) return false;
+        }
+        
+        return true;
+    });
+    
+    displayJobs();
+}
+
+function displayJobs() {
+    const container = document.getElementById('jobs-container');
+    
+    if (filteredJobs.length === 0) {
+        showNoJobs();
+        return;
+    }
+    
+    container.innerHTML = filteredJobs.map(job => `
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card job-card h-100" onclick="showJobDetails('${job.job_id}')">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="card-title mb-0">${formatJobType(job.job_type)}</h6>
+                        <span class="badge status-badge bg-${getStatusColor(job.status)}">${job.status}</span>
+                    </div>
+                    
+                    <p class="card-text small text-muted mb-2">
+                        <strong>ID:</strong> ${job.job_id}<br>
+                        <strong>Started:</strong> ${formatDate(job.start_time)}<br>
+                        <strong>Duration:</strong> ${job.elapsed_time || 'N/A'}
+                    </p>
+                    
+                    ${job.total_items > 0 ? `
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between small">
+                                <span>Progress</span>
+                                <span>${Math.round(job.progress_percentage || 0)}%</span>
+                            </div>
+                            <div class="progress progress-sm">
+                                <div class="progress-bar" style="width: ${job.progress_percentage || 0}%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="row text-center small">
+                            <div class="col-4">
+                                <div class="text-success">${job.successful_items || 0}</div>
+                                <div>Success</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-danger">${job.failed_items || 0}</div>
+                                <div>Failed</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-info">${job.total_items || 0}</div>
+                                <div>Total</div>
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    ${job.current_item ? `
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="fas fa-cog fa-spin me-1"></i>
+                                ${job.current_item}
+                            </small>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function showJobDetails(jobId) {
+    currentJobId = jobId;
+    const job = allJobs.find(j => j.job_id === jobId);
+    
+    if (!job) return;
+    
+    // Update modal with job details
+    document.getElementById('modal-job-id').textContent = job.job_id;
+    document.getElementById('modal-job-type').textContent = formatJobType(job.job_type);
+    document.getElementById('modal-job-status').textContent = job.status;
+    document.getElementById('modal-job-start').textContent = formatDate(job.start_time);
+    document.getElementById('modal-job-end').textContent = job.end_time ? formatDate(job.end_time) : 'N/A';
+    document.getElementById('modal-job-duration').textContent = job.elapsed_time || 'N/A';
+    
+    // Update progress
+    const progress = Math.round(job.progress_percentage || 0);
+    document.getElementById('modal-progress-text').textContent = `${progress}%`;
+    document.getElementById('modal-progress-bar').style.width = `${progress}%`;
+    
+    document.getElementById('modal-total-items').textContent = job.total_items || 0;
+    document.getElementById('modal-processed-items').textContent = job.processed_items || 0;
+    document.getElementById('modal-successful-items').textContent = job.successful_items || 0;
+    document.getElementById('modal-failed-items').textContent = job.failed_items || 0;
+    
+    // Load log content
+    loadJobLogs(jobId);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('jobDetailsModal'));
+    modal.show();
+}
+
+async function loadJobLogs(jobId) {
+    const logContent = document.getElementById('modal-log-content');
+    logContent.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div> Loading logs...</div>';
+    
+    try {
+        const response = await fetch(`/billing/api/jobs/logs/${jobId}/`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const logLines = data.content.split('\n');
+            logContent.innerHTML = logLines.map(line => {
+                const logClass = getLogClass(line);
+                return `<div class="log-entry ${logClass}">${escapeHtml(line)}</div>`;
+            }).join('');
+        } else {
+            logContent.innerHTML = `<div class="text-danger">Error loading logs: ${data.error}</div>`;
+        }
+    } catch (error) {
+        logContent.innerHTML = `<div class="text-danger">Failed to load logs: ${error.message}</div>`;
+    }
+}
+
+function getLogClass(line) {
+    if (line.includes('ERROR') || line.includes('❌')) return 'error';
+    if (line.includes('WARNING') || line.includes('⚠️')) return 'warning';
+    if (line.includes('✅') || line.includes('Successfully')) return 'success';
+    return 'info';
+}
+
+function getStatusColor(status) {
+    switch (status) {
+        case 'completed': return 'success';
+        case 'running': return 'primary';
+        case 'failed': return 'danger';
+        case 'pending': return 'secondary';
+        default: return 'secondary';
+    }
+}
+
+function formatJobType(jobType) {
+    return jobType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleString();
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showLoading(show) {
+    document.getElementById('loading-indicator').style.display = show ? 'block' : 'none';
+    document.getElementById('jobs-container').style.display = show ? 'none' : 'block';
+}
+
+function showNoJobs() {
+    document.getElementById('no-jobs-message').style.display = 'block';
+    document.getElementById('jobs-container').style.display = 'none';
+}
+
+function showError(message) {
+    const container = document.getElementById('jobs-container');
+    container.innerHTML = `
+        <div class="col-12">
+            <div class="alert alert-danger" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                ${message}
+            </div>
+        </div>
+    `;
+}
+
+function refreshLogs() {
+    loadLogs();
+}
+
+function clearFilters() {
+    document.getElementById('job-type-filter').value = '';
+    document.getElementById('status-filter').value = '';
+    document.getElementById('date-filter').value = '7';
+    document.getElementById('search-filter').value = '';
+    filterLogs();
+}
+
+function downloadLog() {
+    if (!currentJobId) return;
+    
+    const link = document.createElement('a');
+    link.href = `/billing/api/jobs/logs/${currentJobId}/?download=1`;
+    link.download = `job_${currentJobId}.log`;
+    link.click();
+}
+</script>
+{% endblock %}

@@ -6,7 +6,9 @@ Provides API endpoints to monitor job progress and retrieve job logs.
 
 import json
 import logging
+from datetime import datetime
 from django.http import JsonResponse, HttpResponse
+from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
@@ -97,14 +99,66 @@ def get_job_logs(request, job_id):
 def list_active_jobs(request):
     """List all currently active jobs"""
     try:
-        from jobs.utils.job_logger import list_active_jobs
+        # Get jobs from cache and log files
+        jobs = []
         
-        active_jobs = list_active_jobs()
+        # Check cache for active jobs
+        try:
+            from jobs.utils.job_logger import get_job_progress
+            
+            # This is a simplified approach - in production you'd want to track active job IDs
+            # For now, we'll scan the logs directory for recent jobs
+            logs_dir = Path("logs")
+            if logs_dir.exists():
+                log_files = list(logs_dir.glob("*.log"))
+                
+                for log_file in log_files:
+                    try:
+                        # Extract job info from filename
+                        # Format: jobtype_jobid.log
+                        filename_parts = log_file.stem.split('_')
+                        if len(filename_parts) >= 2:
+                            job_type = filename_parts[0]
+                            job_id = '_'.join(filename_parts[1:])
+                            
+                            # Try to get progress from cache
+                            progress = get_job_progress(job_id)
+                            
+                            if progress:
+                                jobs.append(progress)
+                            else:
+                                # Create basic job info from log file
+                                stat = log_file.stat()
+                                jobs.append({
+                                    'job_id': job_id,
+                                    'job_type': job_type,
+                                    'status': 'completed',  # Default for files without cache
+                                    'start_time': datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                                    'total_items': 0,
+                                    'processed_items': 0,
+                                    'successful_items': 0,
+                                    'failed_items': 0,
+                                    'progress_percentage': 100,
+                                    'current_item': '',
+                                    'elapsed_time': 'N/A',
+                                    'estimated_remaining_time': None,
+                                    'error_message': '',
+                                    'metadata': {}
+                                })
+                    except Exception as e:
+                        logger.warning(f"Error processing log file {log_file}: {e}")
+                        continue
+        
+        except Exception as e:
+            logger.warning(f"Error getting jobs from cache: {e}")
+        
+        # Sort by start time (newest first)
+        jobs.sort(key=lambda x: x.get('start_time', ''), reverse=True)
         
         return JsonResponse({
             'success': True,
-            'active_jobs': active_jobs,
-            'count': len(active_jobs)
+            'active_jobs': jobs,
+            'count': len(jobs)
         })
         
     except Exception as e:
@@ -169,4 +223,10 @@ def cancel_job(request, job_id):
             'error': 'Internal server error',
             'message': str(e)
         }, status=500)
+
+
+@login_required
+def logs_viewer(request):
+    """Main logs viewer page"""
+    return render(request, 'billing/logs_viewer.html')
 

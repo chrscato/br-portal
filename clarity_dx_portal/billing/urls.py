@@ -59,6 +59,9 @@ urlpatterns = [
     path('search/', views.order_search, name='order_search'),
     path('order/<str:order_id>/', views.order_detail, name='order_detail'),
     
+    # Job monitoring
+    path('logs/', views_job_monitoring.logs_viewer, name='logs_viewer'),
+    
     # Job monitoring API endpoints
     path('api/jobs/progress/<str:job_id>/', views_job_monitoring.get_job_progress, name='job_progress'),
     path('api/jobs/logs/<str:job_id>/', views_job_monitoring.get_job_logs, name='job_logs'),

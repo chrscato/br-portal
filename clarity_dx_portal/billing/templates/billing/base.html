@@ -43,6 +43,9 @@
                 <a class="nav-link" href="{% url 'billing:order_search' %}">
                     <i class="fas fa-search"></i> Search Orders
                 </a>
+                <a class="nav-link" href="{% url 'billing:logs_viewer' %}">
+                    <i class="fas fa-file-alt"></i> Job Logs
+                </a>
                 <div class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                         <i class="fas fa-user"></i> {{ user.username }}
