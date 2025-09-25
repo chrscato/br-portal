@@ -107,28 +107,56 @@ ssh $REMOTE_USER@$REMOTE_HOST << EOF
   
   # Update dependencies
   echo "📦 Updating dependencies..."
+  
+  # Ensure uv is in PATH
+  export PATH="\$HOME/.local/bin:\$PATH"
+  
+  # Check for virtual environment
+  echo "🔍 Checking for virtual environment..."
+  if [ -f ".venv/bin/activate" ]; then
+    echo "🐍 Found .venv virtual environment, activating..."
+    source .venv/bin/activate
+    echo "✅ Virtual environment activated"
+    python --version
+  elif [ -d ".venv" ]; then
+    echo "⚠️  .venv directory exists but activate script not found"
+    ls -la .venv/bin/
+  else
+    echo "❌ No .venv virtual environment found"
+    echo "📁 Creating virtual environment with uv..."
+    if command -v uv &> /dev/null; then
+      uv venv --python 3.11
+      source .venv/bin/activate
+      echo "✅ Virtual environment created and activated"
+    else
+      echo "❌ uv not available, cannot create virtual environment"
+    fi
+  fi
+  
   if command -v uv &> /dev/null; then
     echo "🔄 Syncing dependencies with uv..."
     if ! uv sync; then
-      echo "❌ uv sync failed, falling back to pip install"
-      if command -v python3 &> /dev/null; then
-        python3 -m pip install --upgrade pip
-        python3 -m pip install -r requirements.txt
-      else
+      echo "❌ uv sync failed, falling back to pip install in virtual environment"
+      if [ -f ".venv/bin/activate" ]; then
+        source .venv/bin/activate
         pip install --upgrade pip
         pip install -r requirements.txt
+      else
+        echo "❌ No virtual environment found, cannot install packages safely"
+        echo "⚠️  Please run ./startup_uv.sh first to set up the environment"
       fi
     else
       echo "✅ uv sync completed successfully"
     fi
   else
     echo "⚠️  uv not found, falling back to pip install"
-    if command -v python3 &> /dev/null; then
-      python3 -m pip install --upgrade pip
-      python3 -m pip install -r requirements.txt
-    else
+    if [ -f ".venv/bin/activate" ]; then
+      source .venv/bin/activate
       pip install --upgrade pip
       pip install -r requirements.txt
+    else
+      echo "❌ No virtual environment found, cannot install packages safely"
+      echo "⚠️  Please run ./startup_uv.sh first to set up the environment"
     fi
   fi
 
