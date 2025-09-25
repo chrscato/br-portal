@@ -174,6 +174,7 @@ class ImageProcessor:
 def extract_with_llm(image: Image.Image, strategy: ExtractionStrategy = ExtractionStrategy.STANDARD) -> ExtractionResult:
     """Extract data from HCFA form using LLM vision."""
     if not openai_client:
+        logger.error("OpenAI client not initialized. Check OPENAI_API_KEY environment variable.")
         return ExtractionResult(
             success=False,
             error_message="OpenAI client not initialized. Check OPENAI_API_KEY."
@@ -514,9 +515,11 @@ def process_single_bill(bill_id: str, pdf_key: str) -> bool:
         image = ImageProcessor.enhance_image(image, strategy)
         
         # Extract data
+        logger.info(f"Starting LLM extraction for bill {bill_id} with strategy {strategy}")
         result = extract_with_llm(image, strategy)
         
         if result.success and result.data:
+            logger.info(f"LLM extraction successful for bill {bill_id}")
             # Update database
             if update_provider_bill_record(bill_id, result.data):
                 # Save JSON to S3
@@ -537,6 +540,7 @@ def process_single_bill(bill_id: str, pdf_key: str) -> bool:
                 return False
         else:
             logger.error(f"Extraction failed for {bill_id}: {result.error_message}")
+            logger.error(f"Extraction result details - Success: {result.success}, Error: {result.error_message}")
             return False
             
     except Exception as e:
@@ -708,5 +712,8 @@ if __name__ == "__main__":
     # Setup Django
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'clarity_dx_portal.settings')
     django.setup()
+    
+    # Initialize OpenAI client after Django setup
+    initialize_openai_client()
     
     process_scanned_bills()

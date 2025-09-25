@@ -47,11 +47,11 @@ except ImportError:
 # Django imports will be done after Django setup
 
 # Import S3 utilities
-from config.s3_utils import list_objects, download, upload, move
+from jobs.config.s3_utils import list_objects, download, upload, move
 
 # Import validation utilities
-from utils.validate_intake import validate_provider_bill
-from utils.date_utils import standardize_and_validate_date_of_service
+from jobs.utils.validate_intake import validate_provider_bill
+from jobs.utils.date_utils import standardize_and_validate_date_of_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

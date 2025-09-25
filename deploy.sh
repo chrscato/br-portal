@@ -27,8 +27,8 @@ git commit -m "$commit_message" || echo "📝 Nothing to commit"
 CURRENT_BRANCH=$(git branch --show-current)
 git push origin $CURRENT_BRANCH
 
-# === STEP 2: Copy .env files to VM ===
-echo "📄 Copying .env files to VM..."
+# === STEP 2: Copy configuration files to VM ===
+echo "📄 Copying configuration files to VM..."
 
 # Copy root .env file
 if [ -f ".env" ]; then
@@ -44,6 +44,29 @@ if [ -f "clarity_dx_portal/.env" ]; then
     echo "✅ Django .env file copied successfully"
 else
     echo "⚠️  No Django .env file found locally - skipping copy"
+fi
+
+# Copy critical shell scripts that might be needed
+echo "📜 Copying critical shell scripts..."
+if [ -f "startup.sh" ]; then
+    scp startup.sh $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/startup.sh
+    echo "✅ startup.sh copied successfully"
+fi
+
+if [ -f "manual_startup.sh" ]; then
+    scp manual_startup.sh $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/manual_startup.sh
+    echo "✅ manual_startup.sh copied successfully"
+fi
+
+if [ -f "startup_uv.sh" ]; then
+    scp startup_uv.sh $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/startup_uv.sh
+    echo "✅ startup_uv.sh copied successfully"
+fi
+
+# Copy any other critical config files
+if [ -f "pyproject.toml" ]; then
+    scp pyproject.toml $REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/pyproject.toml
+    echo "✅ pyproject.toml copied successfully"
 fi
 
 # === STEP 3: SSH into VM, pull latest, restart app ===
