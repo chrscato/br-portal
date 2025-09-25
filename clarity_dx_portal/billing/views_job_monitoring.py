@@ -174,20 +174,49 @@ def list_active_jobs(request):
 def get_job_status_summary(request):
     """Get a summary of job statuses and recent activity"""
     try:
-        # This would typically query a database or cache for job history
-        # For now, we'll return a simple summary
+        # Get actual job data from logs directory
+        logs_dir = Path("logs")
+        total_jobs = 0
+        completed_jobs = 0
+        running_jobs = 0
+        failed_jobs = 0
+        
+        job_types = {
+            'process_scans': 0,
+            'process_validation': 0,
+            'process_second_pass': 0,
+            'upload_batch': 0,
+            'process_mapping': 0
+        }
+        
+        if logs_dir.exists():
+            log_files = list(logs_dir.glob("*.log"))
+            total_jobs = len(log_files)
+            
+            # Count by job type
+            for log_file in log_files:
+                try:
+                    filename_parts = log_file.stem.split('_')
+                    if len(filename_parts) >= 2:
+                        job_type = filename_parts[0]
+                        if job_type in job_types:
+                            job_types[job_type] += 1
+                except Exception:
+                    continue
+            
+            # For now, assume all logged jobs are completed
+            # In a real implementation, you'd check cache for running jobs
+            completed_jobs = total_jobs
+            running_jobs = 0
+            failed_jobs = 0
         
         summary = {
-            'total_jobs_today': 0,  # Would be calculated from logs or DB
-            'active_jobs': 0,       # Would be calculated from cache
-            'recent_jobs': [],      # Would be recent job history
-            'job_types': {
-                'process_scans': 0,
-                'process_validation': 0,
-                'process_second_pass': 0,
-                'upload_batch': 0,
-                'process_mapping': 0
-            }
+            'total_jobs_today': total_jobs,
+            'active_jobs': running_jobs,
+            'completed_jobs': completed_jobs,
+            'failed_jobs': failed_jobs,
+            'recent_jobs': [],
+            'job_types': job_types
         }
         
         return JsonResponse({

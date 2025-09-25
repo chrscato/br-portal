@@ -101,7 +101,7 @@ class JobLogger:
         
         # Create file handler for job-specific logs
         log_file = logs_dir / f"{self.job_type}_{self.job_id}.log"
-        file_handler = logging.FileHandler(log_file)
+        file_handler = logging.FileHandler(log_file, encoding='utf-8')
         file_handler.setLevel(logging.INFO)
         
         # Create formatter

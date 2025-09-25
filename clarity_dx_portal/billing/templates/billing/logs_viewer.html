@@ -280,7 +280,7 @@ async function loadLogs() {
     
     try {
         // Get job summary
-        const summaryResponse = await fetch('/billing/api/jobs/summary/');
+        const summaryResponse = await fetch('/api/jobs/summary/');
         const summaryData = await summaryResponse.json();
         
         if (summaryData.success) {
@@ -288,7 +288,7 @@ async function loadLogs() {
         }
         
         // Get active jobs
-        const activeResponse = await fetch('/billing/api/jobs/active/');
+        const activeResponse = await fetch('/api/jobs/active/');
         const activeData = await activeResponse.json();
         
         if (activeData.success) {
@@ -448,7 +448,7 @@ async function loadJobLogs(jobId) {
     logContent.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div> Loading logs...</div>';
     
     try {
-        const response = await fetch(`/billing/api/jobs/logs/${jobId}/`);
+        const response = await fetch(`/api/jobs/logs/${jobId}/`);
         const data = await response.json();
         
         if (data.success) {
@@ -535,7 +535,7 @@ function downloadLog() {
     if (!currentJobId) return;
     
     const link = document.createElement('a');
-    link.href = `/billing/api/jobs/logs/${currentJobId}/?download=1`;
+    link.href = `/api/jobs/logs/${currentJobId}/?download=1`;
     link.download = `job_${currentJobId}.log`;
     link.click();
 }
