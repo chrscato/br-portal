@@ -28,10 +28,10 @@ from openai import RateLimitError, APIError, APITimeoutError
 # Django imports will be done after Django setup
 
 # Import S3 utilities
-from config.s3_utils import list_objects, download, upload, move
+from jobs.config.s3_utils import list_objects, download, upload, move
 
 # Import validation utilities
-from utils.date_utils import standardize_and_validate_date_of_service
+from jobs.utils.date_utils import standardize_and_validate_date_of_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -647,7 +647,7 @@ def process_scraped_validation(limit: int = None):
 def process_scanned_bills(limit: int = None):
     """Process bills from database with status 'SCANNED'."""
     # Import enhanced logging
-    from utils.job_logger import create_scan_processor_logger
+    from jobs.utils.job_logger import create_scan_processor_logger
     
     # Create job logger
     job_logger = create_scan_processor_logger()
