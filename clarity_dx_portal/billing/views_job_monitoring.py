@@ -68,10 +68,19 @@ def get_job_logs(request, job_id):
         
         log_file = log_files[0]
         
+        # Check if download is requested
+        download = request.GET.get('download', False)
+        
         # Read log file content
         try:
             with open(log_file, 'r', encoding='utf-8') as f:
                 log_content = f.read()
+            
+            if download:
+                # Return file for download
+                response = HttpResponse(log_content, content_type='text/plain')
+                response['Content-Disposition'] = f'attachment; filename="job_{job_id}.log"'
+                return response
             
             return JsonResponse({
                 'success': True,
@@ -129,10 +138,34 @@ def list_active_jobs(request):
                             else:
                                 # Create basic job info from log file
                                 stat = log_file.stat()
+                                
+                                # Try to determine job status from log content
+                                job_status = 'completed'  # Default
+                                error_message = ''
+                                
+                                try:
+                                    with open(log_file, 'r', encoding='utf-8') as f:
+                                        log_content = f.read()
+                                    
+                                    # Check for error indicators in log
+                                    if 'ERROR' in log_content or '❌' in log_content:
+                                        job_status = 'failed'
+                                        # Extract error message from last error line
+                                        error_lines = [line for line in log_content.split('\n') if 'ERROR' in line or '❌' in line]
+                                        if error_lines:
+                                            error_message = error_lines[-1].strip()
+                                    
+                                    # Check for completion indicators
+                                    elif 'completed successfully' in log_content or '✅' in log_content:
+                                        job_status = 'completed'
+                                    
+                                except Exception as e:
+                                    logger.warning(f"Error reading log file {log_file} for status detection: {e}")
+                                
                                 jobs.append({
                                     'job_id': job_id,
                                     'job_type': job_type,
-                                    'status': 'completed',  # Default for files without cache
+                                    'status': job_status,
                                     'start_time': datetime.fromtimestamp(stat.st_ctime).isoformat(),
                                     'total_items': 0,
                                     'processed_items': 0,
@@ -142,7 +175,7 @@ def list_active_jobs(request):
                                     'current_item': '',
                                     'elapsed_time': 'N/A',
                                     'estimated_remaining_time': None,
-                                    'error_message': '',
+                                    'error_message': error_message,
                                     'metadata': {}
                                 })
                     except Exception as e:
@@ -204,11 +237,27 @@ def get_job_status_summary(request):
                 except Exception:
                     continue
             
-            # For now, assume all logged jobs are completed
-            # In a real implementation, you'd check cache for running jobs
-            completed_jobs = total_jobs
+            # Count jobs by status from log content
+            completed_jobs = 0
             running_jobs = 0
             failed_jobs = 0
+            
+            for log_file in log_files:
+                try:
+                    with open(log_file, 'r', encoding='utf-8') as f:
+                        log_content = f.read()
+                    
+                    if 'ERROR' in log_content or '❌' in log_content:
+                        failed_jobs += 1
+                    elif 'completed successfully' in log_content or '✅' in log_content:
+                        completed_jobs += 1
+                    else:
+                        # Default to completed if no clear status
+                        completed_jobs += 1
+                        
+                except Exception:
+                    # If we can't read the file, assume completed
+                    completed_jobs += 1
         
         summary = {
             'total_jobs_today': total_jobs,
