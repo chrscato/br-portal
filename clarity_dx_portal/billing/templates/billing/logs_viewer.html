@@ -267,6 +267,22 @@ let allJobs = [];
 let filteredJobs = [];
 let currentJobId = null;
 
+// Get CSRF token from cookies
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 // Load logs on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadLogs();
@@ -279,8 +295,13 @@ async function loadLogs() {
     showLoading(true);
     
     try {
+        // Get CSRF token
+        const csrfToken = getCookie('csrftoken');
+        
         // Get job summary
-        const summaryResponse = await fetch('/api/jobs/summary/');
+        const summaryResponse = await fetch('/api/jobs/summary/', {
+            credentials: 'same-origin'
+        });
         const summaryData = await summaryResponse.json();
         
         if (summaryData.success) {
@@ -288,7 +309,9 @@ async function loadLogs() {
         }
         
         // Get active jobs
-        const activeResponse = await fetch('/api/jobs/active/');
+        const activeResponse = await fetch('/api/jobs/active/', {
+            credentials: 'same-origin'
+        });
         const activeData = await activeResponse.json();
         
         if (activeData.success) {
@@ -448,7 +471,12 @@ async function loadJobLogs(jobId) {
     logContent.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div> Loading logs...</div>';
     
     try {
-        const response = await fetch(`/api/jobs/logs/${jobId}/`);
+        // Get CSRF token
+        const csrfToken = getCookie('csrftoken');
+        
+        const response = await fetch(`/api/jobs/logs/${jobId}/`, {
+            credentials: 'same-origin'
+        });
         const data = await response.json();
         
         if (data.success) {

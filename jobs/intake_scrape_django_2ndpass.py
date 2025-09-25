@@ -46,6 +46,34 @@ except ImportError:
 
 # Django imports will be done after Django setup
 
+# Setup Django if not already configured (for when imported from web interface)
+def _ensure_django_setup():
+    """Ensure Django is set up when imported from web interface."""
+    try:
+        from django.conf import settings
+        if not settings.configured:
+            raise Exception("Django not configured")
+    except Exception:
+        # Django not set up, configure it
+        import django
+        from django.conf import settings
+        
+        # Add the project root and Django project to Python path
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        django_project_path = os.path.join(project_root, 'clarity_dx_portal')
+        
+        if project_root not in sys.path:
+            sys.path.insert(0, project_root)
+        if django_project_path not in sys.path:
+            sys.path.insert(0, django_project_path)
+        
+        # Setup Django
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'clarity_dx_portal.settings')
+        django.setup()
+
+# Ensure Django is set up when this module is imported
+_ensure_django_setup()
+
 # Import S3 utilities (will be imported dynamically)
 # from jobs.config.s3_utils import list_objects, download, upload, move
 
@@ -564,7 +592,10 @@ def validate_provider_bill_django(bill_id: str) -> tuple[str, str, str]:
             try:
                 date_str = item.date_of_service
                 if date_str:
-                    from jobs.utils.date_utils import standardize_and_validate_date_of_service
+                    try:
+                        from jobs.utils.date_utils import standardize_and_validate_date_of_service
+                    except ImportError:
+                        from utils.date_utils import standardize_and_validate_date_of_service
                     is_valid, standardized_date, error_msg = standardize_and_validate_date_of_service(date_str)
                     
                     if not is_valid:
@@ -912,7 +943,10 @@ def process_single_bill_2nd_pass(bill_id: str, pdf_key: str, error_message: str)
         logger.info(f"Error type: {error_type}, Recommended strategy: {recommended_strategy}")
         
         # Import S3 utilities dynamically
-        from jobs.config.s3_utils import download
+        try:
+            from jobs.config.s3_utils import download
+        except ImportError:
+            from config.s3_utils import download
         
         # Download PDF
         tmp_pdf = tempfile.mktemp(suffix='.pdf')
@@ -959,7 +993,10 @@ def process_single_bill_2nd_pass(bill_id: str, pdf_key: str, error_message: str)
             # Update database
             if update_provider_bill_record_2nd_pass(bill_id, result.data, success=True):
                 # Save JSON to S3
-                from jobs.config.s3_utils import upload
+                try:
+                    from jobs.config.s3_utils import upload
+                except ImportError:
+                    from config.s3_utils import upload
                 tmp_json = tempfile.mktemp(suffix='.json')
                 with open(tmp_json, 'w', encoding='utf-8') as f:
                     json.dump(result.data, f, indent=2)
@@ -993,7 +1030,10 @@ def process_single_bill_2nd_pass(bill_id: str, pdf_key: str, error_message: str)
 def process_invalid_bills(limit: int = None):
     """Process bills from database with status 'INVALID' for second pass."""
     # Import enhanced logging
-    from utils.job_logger import create_second_pass_logger
+    try:
+        from utils.job_logger import create_second_pass_logger
+    except ImportError:
+        from jobs.utils.job_logger import create_second_pass_logger
     
     # Create job logger
     job_logger = create_second_pass_logger()

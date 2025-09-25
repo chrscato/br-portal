@@ -76,6 +76,41 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- CSRF Token for AJAX requests -->
+    <script>
+        // Get CSRF token from cookies
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // Set up CSRF token for all AJAX requests
+        const csrftoken = getCookie('csrftoken');
+        
+        // Configure fetch to include CSRF token by default
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options = {}) {
+            if (options.method && options.method !== 'GET' && options.method !== 'HEAD') {
+                options.headers = options.headers || {};
+                if (!options.headers['X-CSRFToken']) {
+                    options.headers['X-CSRFToken'] = csrftoken;
+                }
+            }
+            return originalFetch(url, options);
+        };
+    </script>
+    
     {% block extra_js %}
     {% endblock %}
 </body>
