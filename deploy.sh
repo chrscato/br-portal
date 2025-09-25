@@ -134,11 +134,12 @@ ssh $REMOTE_USER@$REMOTE_HOST << EOF
   fi
   
   if command -v uv &> /dev/null; then
-    echo "🔄 Syncing dependencies with uv..."
-    if ! uv sync; then
-      echo "❌ uv sync failed, falling back to pip install in virtual environment"
+    echo "🔄 Installing dependencies with uv..."
+    if ! uv pip install -r requirements.txt; then
+      echo "❌ uv pip install failed, falling back to pip install in virtual environment"
       if [ -f ".venv/bin/activate" ]; then
         source .venv/bin/activate
+        echo "🐍 Using pip from virtual environment: \$(which pip)"
         pip install --upgrade pip
         pip install -r requirements.txt
       else
@@ -146,12 +147,13 @@ ssh $REMOTE_USER@$REMOTE_HOST << EOF
         echo "⚠️  Please run ./startup_uv.sh first to set up the environment"
       fi
     else
-      echo "✅ uv sync completed successfully"
+      echo "✅ uv pip install completed successfully"
     fi
   else
     echo "⚠️  uv not found, falling back to pip install"
     if [ -f ".venv/bin/activate" ]; then
       source .venv/bin/activate
+      echo "🐍 Using pip from virtual environment: \$(which pip)"
       pip install --upgrade pip
       pip install -r requirements.txt
     else
