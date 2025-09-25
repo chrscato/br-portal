@@ -53,12 +53,15 @@ def get_job_progress(request, job_id):
 def get_job_logs(request, job_id):
     """Get log file for a specific job"""
     try:
-        # Construct log file path
-        logs_dir = Path("logs")
+        # Construct log file path (logs are in parent directory)
+        logs_dir = Path("../logs")
         log_file = logs_dir / f"*_{job_id}.log"
         
         # Find the actual log file (since we don't know the job type prefix)
+        # Try both patterns: *_jobid.log and *_*_jobid.log
         log_files = list(logs_dir.glob(f"*_{job_id}.log"))
+        if not log_files:
+            log_files = list(logs_dir.glob(f"*_*_{job_id}.log"))
         
         if not log_files:
             return JsonResponse({
@@ -117,16 +120,22 @@ def list_active_jobs(request):
             
             # This is a simplified approach - in production you'd want to track active job IDs
             # For now, we'll scan the logs directory for recent jobs
-            logs_dir = Path("logs")
+            logs_dir = Path("../logs")
             if logs_dir.exists():
                 log_files = list(logs_dir.glob("*.log"))
                 
                 for log_file in log_files:
                     try:
                         # Extract job info from filename
-                        # Format: jobtype_jobid.log
+                        # Format: jobtype_jobtype_jobid.log (e.g., process_mapping_process_mapping_1758817106.log)
                         filename_parts = log_file.stem.split('_')
-                        if len(filename_parts) >= 2:
+                        if len(filename_parts) >= 3:
+                            # For files like process_mapping_process_mapping_1758817106.log
+                            # job_type is the first part, job_id is the last part (timestamp)
+                            job_type = filename_parts[0]
+                            job_id = filename_parts[-1]  # Last part is the timestamp
+                        elif len(filename_parts) >= 2:
+                            # Fallback for simpler naming
                             job_type = filename_parts[0]
                             job_id = '_'.join(filename_parts[1:])
                             
@@ -208,7 +217,7 @@ def get_job_status_summary(request):
     """Get a summary of job statuses and recent activity"""
     try:
         # Get actual job data from logs directory
-        logs_dir = Path("logs")
+        logs_dir = Path("../logs")
         total_jobs = 0
         completed_jobs = 0
         running_jobs = 0
@@ -230,10 +239,17 @@ def get_job_status_summary(request):
             for log_file in log_files:
                 try:
                     filename_parts = log_file.stem.split('_')
-                    if len(filename_parts) >= 2:
+                    if len(filename_parts) >= 3:
+                        # For files like process_mapping_process_mapping_1758817106.log
                         job_type = filename_parts[0]
-                        if job_type in job_types:
-                            job_types[job_type] += 1
+                    elif len(filename_parts) >= 2:
+                        # Fallback for simpler naming
+                        job_type = filename_parts[0]
+                    else:
+                        continue
+                        
+                    if job_type in job_types:
+                        job_types[job_type] += 1
                 except Exception:
                     continue
             
