@@ -61,8 +61,10 @@ def get_job_progress(request, job_id):
 def get_job_logs(request, job_id):
     """Get log file for a specific job"""
     try:
-        # Construct log file path (logs are in parent directory)
-        logs_dir = Path("../logs")
+        # Construct log file path
+        # Get the project root directory (2 levels up from this file)
+        project_root = Path(__file__).resolve().parent.parent.parent
+        logs_dir = project_root / "logs"
         log_file = logs_dir / f"*_{job_id}.log"
         
         # Find the actual log file (since we don't know the job type prefix)
@@ -123,7 +125,9 @@ def list_active_jobs(request):
         jobs = []
         
         # Process log files to get job information
-        logs_dir = Path("../logs")
+        # Get the project root directory (2 levels up from this file)
+        project_root = Path(__file__).resolve().parent.parent.parent
+        logs_dir = project_root / "logs"
         if logs_dir.exists():
             log_files = list(logs_dir.glob("*.log"))
             
@@ -232,7 +236,9 @@ def get_job_status_summary(request):
     """Get a summary of job statuses and recent activity"""
     try:
         # Get actual job data from logs directory
-        logs_dir = Path("../logs")
+        # Get the project root directory (2 levels up from this file)
+        project_root = Path(__file__).resolve().parent.parent.parent
+        logs_dir = project_root / "logs"
         total_jobs = 0
         completed_jobs = 0
         running_jobs = 0

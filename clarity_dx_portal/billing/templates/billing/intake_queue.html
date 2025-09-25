@@ -498,7 +498,7 @@ class JobProgressMonitor {
     async findAndMonitorJob() {
         try {
             // Get active jobs and find one matching our type
-            const response = await fetch('/billing/api/jobs/active/');
+            const response = await fetch('/api/jobs/active/');
             const data = await response.json();
             
             if (data.success && data.active_jobs) {
@@ -534,7 +534,7 @@ class JobProgressMonitor {
             if (!this.isMonitoring || !this.currentJobId) return;
             
             try {
-                const response = await fetch(`/billing/api/jobs/progress/${this.currentJobId}/`);
+                const response = await fetch(`/api/jobs/progress/${this.currentJobId}/`);
                 const data = await response.json();
                 
                 if (data.success) {
