@@ -79,14 +79,19 @@ def validate_provider_bill(bill_id: str, cursor: sqlite3.Cursor) -> tuple[str, s
         # Check date of service - UPDATED with date utils
         try:
             date_str = item['date_of_service']
-            is_valid, standardized_date, error_msg = standardize_and_validate_date_of_service(date_str)
             
-            if not is_valid:
-                errors.append(f"Date of service error: {error_msg}")
+            # Date of service is required - null/empty dates are invalid
+            if not date_str:
+                errors.append(f"Missing date of service")
             else:
-                # Log if we standardized the format
-                if date_str != standardized_date:
-                    logger.info(f"Standardized date for line item {item['id']}: '{date_str}' -> '{standardized_date}'")
+                is_valid, standardized_date, error_msg = standardize_and_validate_date_of_service(date_str)
+                
+                if not is_valid:
+                    errors.append(f"Date of service error: {error_msg}")
+                else:
+                    # Log if we standardized the format
+                    if date_str != standardized_date:
+                        logger.info(f"Standardized date for line item {item['id']}: '{date_str}' -> '{standardized_date}'")
                     
         except Exception as e:
             errors.append(f"Error processing date: {date_str} - {str(e)}")

@@ -11,7 +11,7 @@
                 <h1 class="h3 mb-0">Intake Queue</h1>
                 <div class="d-flex gap-2">
                     {% if scanned_count > 0 %}
-                    <form method="post" action="{% url 'billing:process_scans' %}" style="display: inline;" onsubmit="showLoading('Processing Scans', 'Extracting data from {{ scanned_count }} bills using AI...')">
+                    <form method="post" action="{% url 'billing:process_scans' %}" style="display: inline;" onsubmit="showLoading('Processing Scans', 'Extracting data from {{ scanned_count }} bills using AI...', 'process_scans')">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-success" onclick="return confirm('Are you sure you want to process all {{ scanned_count }} scanned bills? This will extract data using AI and may take several minutes.')">
                             <i class="fas fa-cogs me-2"></i>Process Scans ({{ scanned_count }})
@@ -35,7 +35,7 @@
                     </form>
                     {% endif %}
                     {% if invalid_count > 0 %}
-                    <form method="post" action="{% url 'billing:process_second_pass' %}" style="display: inline;" onsubmit="showLoading('Second Pass Processing', 'Running enhanced AI processing on {{ invalid_count }} bills...')">
+                    <form method="post" action="{% url 'billing:process_second_pass' %}" style="display: inline;" onsubmit="showLoading('Second Pass Processing', 'Running enhanced AI processing on {{ invalid_count }} bills...', 'process_second_pass')">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to run second pass processing on all {{ invalid_count }} invalid bills? This will attempt to re-extract data using enhanced AI processing and may take several minutes.')">
                             <i class="fas fa-redo me-2"></i>Second Pass ({{ invalid_count }})
@@ -288,16 +288,31 @@
 </div>
 
 <script>
-// Auto-refresh the page every 30 seconds to show new uploads
-setTimeout(function() {
-    location.reload();
+// Auto-refresh the page every 30 seconds to show new uploads (only if no job is running)
+let autoRefreshInterval = setTimeout(function() {
+    if (!window.jobMonitor || !window.jobMonitor.isMonitoring) {
+        location.reload();
+    }
 }, 30000);
 
-// Loading overlay functions
-function showLoading(title, message) {
+// Global job monitor instance
+window.jobMonitor = null;
+
+// Enhanced loading overlay functions
+function showLoading(title, message, jobType = null) {
     document.getElementById('loadingTitle').textContent = title;
     document.getElementById('loadingMessage').textContent = message;
     document.getElementById('loadingOverlay').style.display = 'flex';
+    
+    // Reset progress display
+    document.getElementById('progressPercentage').textContent = '0%';
+    document.getElementById('progressBar').style.width = '0%';
+    document.getElementById('currentItem').textContent = 'Initializing...';
+    document.getElementById('elapsedTime').textContent = '00:00';
+    document.getElementById('estimatedTime').textContent = 'Calculating...';
+    document.getElementById('successCount').textContent = '0';
+    document.getElementById('failedCount').textContent = '0';
+    document.getElementById('logContainer').innerHTML = '<div class="log-entry">Starting job...</div>';
     
     // Disable all buttons to prevent multiple submissions
     const buttons = document.querySelectorAll('button[type="submit"]');
@@ -305,40 +320,315 @@ function showLoading(title, message) {
         button.disabled = true;
         button.style.opacity = '0.6';
     });
+    
+    // Clear auto-refresh
+    if (autoRefreshInterval) {
+        clearTimeout(autoRefreshInterval);
+        autoRefreshInterval = null;
+    }
+    
+    // Start monitoring for job progress if we can determine the job type
+    if (jobType) {
+        startJobMonitoring(jobType);
+    }
+}
+
+function startJobMonitoring(jobType) {
+    // Stop any existing monitoring
+    if (window.jobMonitor) {
+        window.jobMonitor.stopMonitoring();
+    }
+    
+    // Start monitoring for active jobs of this type
+    window.jobMonitor = new JobProgressMonitor({
+        jobType: jobType,
+        onProgress: updateProgressDisplay,
+        onComplete: handleJobComplete,
+        onError: handleJobError
+    });
+    
+    window.jobMonitor.startMonitoring();
+}
+
+function updateProgressDisplay(progress) {
+    // Update progress bar
+    const percentage = Math.round(progress.progress_percentage || 0);
+    document.getElementById('progressPercentage').textContent = percentage + '%';
+    document.getElementById('progressBar').style.width = percentage + '%';
+    
+    // Update counts
+    document.getElementById('successCount').textContent = progress.successful_items || 0;
+    document.getElementById('failedCount').textContent = progress.failed_items || 0;
+    
+    // Update current item
+    const currentItem = progress.current_item || 'Processing...';
+    document.getElementById('currentItem').textContent = currentItem;
+    
+    // Update time estimates
+    if (progress.elapsed_time) {
+        document.getElementById('elapsedTime').textContent = formatTime(progress.elapsed_time);
+    }
+    if (progress.estimated_remaining_time) {
+        document.getElementById('estimatedTime').textContent = formatTime(progress.estimated_remaining_time);
+    }
+    
+    // Add log entry
+    addLogEntry(`Processing ${currentItem} (${percentage}% complete)`);
+}
+
+function handleJobComplete(progress) {
+    addLogEntry(`✅ Job completed successfully!`);
+    addLogEntry(`📊 Final results: ${progress.successful_items} successful, ${progress.failed_items} failed`);
+    
+    // Update final progress
+    document.getElementById('progressPercentage').textContent = '100%';
+    document.getElementById('progressBar').style.width = '100%';
+    document.getElementById('progressBar').classList.add('bg-success');
+    
+    // Auto-close after 5 seconds
+    setTimeout(() => {
+        hideLoading();
+        location.reload();
+    }, 5000);
+}
+
+function handleJobError(error) {
+    addLogEntry(`❌ Job error: ${error.message || error}`);
+    document.getElementById('progressBar').classList.add('bg-danger');
+    
+    // Show error but don't auto-close
+    setTimeout(() => {
+        hideLoading();
+        location.reload();
+    }, 10000);
+}
+
+function addLogEntry(message) {
+    const logContainer = document.getElementById('logContainer');
+    const logEntry = document.createElement('div');
+    logEntry.className = 'log-entry';
+    logEntry.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+    
+    logContainer.insertBefore(logEntry, logContainer.firstChild);
+    
+    // Keep only last 10 entries
+    while (logContainer.children.length > 10) {
+        logContainer.removeChild(logContainer.lastChild);
+    }
+}
+
+function formatTime(timeString) {
+    // Parse time string and format as MM:SS
+    const match = timeString.match(/(\d+):(\d+):(\d+)/);
+    if (match) {
+        const hours = parseInt(match[1]);
+        const minutes = parseInt(match[2]);
+        const seconds = parseInt(match[3]);
+        
+        if (hours > 0) {
+            return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        } else {
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+    }
+    return timeString;
+}
+
+function hideLoading() {
+    document.getElementById('loadingOverlay').style.display = 'none';
+    
+    // Re-enable buttons
+    const buttons = document.querySelectorAll('button[type="submit"]');
+    buttons.forEach(button => {
+        button.disabled = false;
+        button.style.opacity = '1';
+    });
+    
+    // Stop monitoring
+    if (window.jobMonitor) {
+        window.jobMonitor.stopMonitoring();
+        window.jobMonitor = null;
+    }
+    
+    // Restart auto-refresh
+    if (!autoRefreshInterval) {
+        autoRefreshInterval = setTimeout(function() {
+            location.reload();
+        }, 30000);
+    }
 }
 
 // Hide loading overlay when page loads (in case of redirect back)
 window.addEventListener('load', function() {
     setTimeout(function() {
-        document.getElementById('loadingOverlay').style.display = 'none';
-        
-        // Re-enable buttons
-        const buttons = document.querySelectorAll('button[type="submit"]');
-        buttons.forEach(button => {
-            button.disabled = false;
-            button.style.opacity = '1';
-        });
+        hideLoading();
     }, 1000);
 });
+
+// Job Progress Monitor Class
+class JobProgressMonitor {
+    constructor(options = {}) {
+        this.jobType = options.jobType;
+        this.updateInterval = options.updateInterval || 3000; // 3 seconds
+        this.maxRetries = options.maxRetries || 5;
+        this.retryDelay = options.retryDelay || 5000; // 5 seconds
+        this.onProgress = options.onProgress || (() => {});
+        this.onComplete = options.onComplete || (() => {});
+        this.onError = options.onError || (() => {});
+        
+        this.isMonitoring = false;
+        this.retryCount = 0;
+        this.intervalId = null;
+        this.currentJobId = null;
+    }
+    
+    startMonitoring() {
+        this.isMonitoring = true;
+        this.findAndMonitorJob();
+    }
+    
+    stopMonitoring() {
+        this.isMonitoring = false;
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
+    }
+    
+    async findAndMonitorJob() {
+        try {
+            // Get active jobs and find one matching our type
+            const response = await fetch('/billing/api/jobs/active/');
+            const data = await response.json();
+            
+            if (data.success && data.active_jobs) {
+                const job = data.active_jobs.find(j => j.job_type === this.jobType);
+                if (job) {
+                    this.currentJobId = job.job_id;
+                    this.startProgressPolling();
+                    return;
+                }
+            }
+            
+            // If no job found, retry after delay
+            if (this.retryCount < this.maxRetries) {
+                this.retryCount++;
+                setTimeout(() => this.findAndMonitorJob(), this.retryDelay);
+            } else {
+                this.onError({ message: 'Could not find active job to monitor' });
+            }
+            
+        } catch (error) {
+            console.error('Error finding job to monitor:', error);
+            if (this.retryCount < this.maxRetries) {
+                this.retryCount++;
+                setTimeout(() => this.findAndMonitorJob(), this.retryDelay);
+            } else {
+                this.onError(error);
+            }
+        }
+    }
+    
+    startProgressPolling() {
+        this.intervalId = setInterval(async () => {
+            if (!this.isMonitoring || !this.currentJobId) return;
+            
+            try {
+                const response = await fetch(`/billing/api/jobs/progress/${this.currentJobId}/`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.onProgress(data.progress);
+                    
+                    // Check if job is complete
+                    if (data.progress.status === 'completed' || data.progress.status === 'failed') {
+                        this.stopMonitoring();
+                        this.onComplete(data.progress);
+                    }
+                } else {
+                    // Job not found or expired
+                    this.stopMonitoring();
+                    this.onError({ message: data.error || 'Job monitoring ended' });
+                }
+                
+            } catch (error) {
+                console.error('Error polling job progress:', error);
+                this.retryCount++;
+                if (this.retryCount >= this.maxRetries) {
+                    this.stopMonitoring();
+                    this.onError(error);
+                }
+            }
+        }, this.updateInterval);
+    }
+}
 </script>
 
-<!-- Loading Overlay -->
+<!-- Enhanced Loading Overlay with Real-time Progress -->
 <div id="loadingOverlay" class="loading-overlay" style="display: none;">
     <div class="loading-container">
-        <div class="loading-spinner">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </div>
-        <div class="loading-content">
-            <h3 id="loadingTitle" class="loading-title">Processing...</h3>
-            <p id="loadingMessage" class="loading-message">Please wait while we process your request...</p>
-            <div class="loading-progress">
-                <div class="progress">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+        <div class="loading-header">
+            <div class="loading-spinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
                 </div>
             </div>
+            <div class="loading-title-section">
+                <h3 id="loadingTitle" class="loading-title">Processing...</h3>
+                <p id="loadingMessage" class="loading-message">Please wait while we process your request...</p>
+            </div>
+        </div>
+        
+        <div class="loading-progress-section">
+            <!-- Progress Bar -->
+            <div class="progress-container">
+                <div class="progress-info">
+                    <span id="progressPercentage" class="progress-percentage">0%</span>
+                    <span id="currentItem" class="current-item">Initializing...</span>
+                </div>
+                <div class="progress">
+                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <!-- Statistics -->
+            <div class="stats-container">
+                <div class="stat-item">
+                    <i class="fas fa-check-circle text-success"></i>
+                    <span class="stat-label">Success:</span>
+                    <span id="successCount" class="stat-value">0</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-times-circle text-danger"></i>
+                    <span class="stat-label">Failed:</span>
+                    <span id="failedCount" class="stat-value">0</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-clock text-info"></i>
+                    <span class="stat-label">Elapsed:</span>
+                    <span id="elapsedTime" class="stat-value">00:00</span>
+                </div>
+                <div class="stat-item">
+                    <i class="fas fa-hourglass-half text-warning"></i>
+                    <span class="stat-label">Remaining:</span>
+                    <span id="estimatedTime" class="stat-value">Calculating...</span>
+                </div>
+            </div>
+            
+            <!-- Live Log Display -->
+            <div class="log-section">
+                <h6 class="log-title">Live Progress Log</h6>
+                <div id="logContainer" class="log-container">
+                    <div class="log-entry">Starting job...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="loading-footer">
             <p class="loading-note">This may take several minutes. Please do not close this window.</p>
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="hideLoading()">
+                <i class="fas fa-times me-1"></i>Close
+            </button>
         </div>
     </div>
 </div>
@@ -355,67 +645,235 @@ window.addEventListener('load', function() {
     display: flex;
     justify-content: center;
     align-items: center;
+    overflow-y: auto;
 }
 
 .loading-container {
     background: white;
     border-radius: 15px;
-    padding: 40px;
-    text-align: center;
+    padding: 30px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    max-width: 500px;
-    width: 90%;
+    max-width: 800px;
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.loading-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 25px;
+    text-align: left;
 }
 
 .loading-spinner {
-    margin-bottom: 30px;
+    margin-right: 20px;
+    flex-shrink: 0;
 }
 
 .spinner-border {
-    width: 4rem;
-    height: 4rem;
-    border-width: 0.4em;
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3em;
+}
+
+.loading-title-section {
+    flex: 1;
 }
 
 .loading-title {
     color: #2c3e50;
-    margin-bottom: 15px;
+    margin-bottom: 8px;
     font-weight: 600;
+    font-size: 1.4rem;
     animation: pulse 2s infinite;
 }
 
 .loading-message {
     color: #7f8c8d;
-    font-size: 1.1rem;
+    font-size: 1rem;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.loading-progress-section {
     margin-bottom: 25px;
 }
 
-.loading-progress {
+.progress-container {
     margin-bottom: 20px;
 }
 
-.loading-note {
-    color: #95a5a6;
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.progress-percentage {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 1.1rem;
+}
+
+.current-item {
+    color: #7f8c8d;
     font-size: 0.9rem;
     font-style: italic;
-    margin-bottom: 0;
 }
 
 .progress {
-    height: 8px;
+    height: 20px;
     border-radius: 10px;
     background-color: #ecf0f1;
+    overflow: hidden;
 }
 
 .progress-bar {
     background: linear-gradient(45deg, #3498db, #2980b9);
     border-radius: 10px;
+    transition: width 0.5s ease;
+    height: 100%;
+}
+
+.progress-bar.bg-success {
+    background: linear-gradient(45deg, #27ae60, #2ecc71) !important;
+}
+
+.progress-bar.bg-danger {
+    background: linear-gradient(45deg, #e74c3c, #c0392b) !important;
+}
+
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+}
+
+.stat-item i {
+    margin-right: 8px;
+    font-size: 1.1rem;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    margin-right: 5px;
+}
+
+.stat-value {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.log-section {
+    border-top: 1px solid #ecf0f1;
+    padding-top: 20px;
+}
+
+.log-title {
+    color: #2c3e50;
+    font-weight: 600;
+    margin-bottom: 10px;
+    font-size: 1rem;
+}
+
+.log-container {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+}
+
+.log-entry {
+    margin-bottom: 5px;
+    color: #495057;
+    line-height: 1.4;
+}
+
+.log-entry:last-child {
+    margin-bottom: 0;
+}
+
+.loading-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #ecf0f1;
+    padding-top: 20px;
+}
+
+.loading-note {
+    color: #95a5a6;
+    font-size: 0.9rem;
+    margin: 0;
+    font-style: italic;
 }
 
 @keyframes pulse {
     0% { opacity: 1; }
-    50% { opacity: 0.5; }
+    50% { opacity: 0.7; }
     100% { opacity: 1; }
+}
+
+@media (max-width: 768px) {
+    .loading-container {
+        padding: 20px;
+        margin: 10px;
+        max-height: 95vh;
+    }
+    
+    .loading-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .loading-spinner {
+        margin-right: 0;
+        margin-bottom: 15px;
+    }
+    
+    .loading-title {
+        font-size: 1.2rem;
+    }
+    
+    .stats-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .loading-footer {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .progress-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
 }
 </style>
 

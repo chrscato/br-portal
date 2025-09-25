@@ -591,7 +591,11 @@ def validate_provider_bill_django(bill_id: str) -> tuple[str, str, str]:
             # Check date of service
             try:
                 date_str = item.date_of_service
-                if date_str:
+                
+                # Date of service is required - null/empty dates are invalid
+                if not date_str:
+                    errors.append(f"Missing date of service")
+                else:
                     try:
                         from jobs.utils.date_utils import standardize_and_validate_date_of_service
                     except ImportError:
