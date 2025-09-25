@@ -46,12 +46,12 @@ except ImportError:
 
 # Django imports will be done after Django setup
 
-# Import S3 utilities
-from jobs.config.s3_utils import list_objects, download, upload, move
+# Import S3 utilities (will be imported dynamically)
+# from jobs.config.s3_utils import list_objects, download, upload, move
 
-# Import validation utilities
-from jobs.utils.validate_intake import validate_provider_bill
-from jobs.utils.date_utils import standardize_and_validate_date_of_service
+# Import validation utilities (will be imported dynamically)
+# from jobs.utils.validate_intake import validate_provider_bill
+# from jobs.utils.date_utils import standardize_and_validate_date_of_service
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -560,21 +560,22 @@ def validate_provider_bill_django(bill_id: str) -> tuple[str, str, str]:
         if not item.charge_amount or item.charge_amount <= 0:
             errors.append(f"Invalid charge amount: {item.charge_amount}")
         
-        # Check date of service
-        try:
-            date_str = item.date_of_service
-            if date_str:
-                is_valid, standardized_date, error_msg = standardize_and_validate_date_of_service(date_str)
-                
-                if not is_valid:
-                    errors.append(f"Date of service error: {error_msg}")
-                else:
-                    # Log if we standardized the format
-                    if date_str != standardized_date:
-                        logger.info(f"Standardized date for line item {item.id}: '{date_str}' -> '{standardized_date}'")
+            # Check date of service
+            try:
+                date_str = item.date_of_service
+                if date_str:
+                    from jobs.utils.date_utils import standardize_and_validate_date_of_service
+                    is_valid, standardized_date, error_msg = standardize_and_validate_date_of_service(date_str)
+                    
+                    if not is_valid:
+                        errors.append(f"Date of service error: {error_msg}")
+                    else:
+                        # Log if we standardized the format
+                        if date_str != standardized_date:
+                            logger.info(f"Standardized date for line item {item.id}: '{date_str}' -> '{standardized_date}'")
                         
-        except Exception as e:
-            errors.append(f"Error processing date: {date_str} - {str(e)}")
+            except Exception as e:
+                errors.append(f"Error processing date: {date_str} - {str(e)}")
     
     # 3. Check total charge matches sum of line items
     total_line_charges = sum(item.charge_amount for item in line_items if item.charge_amount)
@@ -910,6 +911,9 @@ def process_single_bill_2nd_pass(bill_id: str, pdf_key: str, error_message: str)
         error_type, recommended_strategy = ErrorAnalyzer.analyze_error(error_message)
         logger.info(f"Error type: {error_type}, Recommended strategy: {recommended_strategy}")
         
+        # Import S3 utilities dynamically
+        from jobs.config.s3_utils import download
+        
         # Download PDF
         tmp_pdf = tempfile.mktemp(suffix='.pdf')
         try:
@@ -955,6 +959,7 @@ def process_single_bill_2nd_pass(bill_id: str, pdf_key: str, error_message: str)
             # Update database
             if update_provider_bill_record_2nd_pass(bill_id, result.data, success=True):
                 # Save JSON to S3
+                from jobs.config.s3_utils import upload
                 tmp_json = tempfile.mktemp(suffix='.json')
                 with open(tmp_json, 'w', encoding='utf-8') as f:
                     json.dump(result.data, f, indent=2)
