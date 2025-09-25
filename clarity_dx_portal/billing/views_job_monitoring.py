@@ -24,6 +24,14 @@ logger = logging.getLogger(__name__)
 def get_job_progress(request, job_id):
     """Get current progress for a specific job"""
     try:
+        # Add the jobs directory to the Python path
+        import sys
+        import os
+        jobs_path = os.path.join(os.path.dirname(__file__), '..', '..', 'jobs')
+        jobs_path = os.path.abspath(jobs_path)
+        if jobs_path not in sys.path:
+            sys.path.insert(0, jobs_path)
+        
         from jobs.utils.job_logger import get_job_progress
         
         progress = get_job_progress(job_id)
@@ -114,85 +122,92 @@ def list_active_jobs(request):
         # Get jobs from cache and log files
         jobs = []
         
-        # Check cache for active jobs
-        try:
-            from jobs.utils.job_logger import get_job_progress
+        # Process log files to get job information
+        logs_dir = Path("../logs")
+        if logs_dir.exists():
+            log_files = list(logs_dir.glob("*.log"))
             
-            # This is a simplified approach - in production you'd want to track active job IDs
-            # For now, we'll scan the logs directory for recent jobs
-            logs_dir = Path("../logs")
-            if logs_dir.exists():
-                log_files = list(logs_dir.glob("*.log"))
-                
-                for log_file in log_files:
-                    try:
-                        # Extract job info from filename
-                        # Format: jobtype_jobtype_jobid.log (e.g., process_mapping_process_mapping_1758817106.log)
-                        filename_parts = log_file.stem.split('_')
-                        if len(filename_parts) >= 3:
-                            # For files like process_mapping_process_mapping_1758817106.log
-                            # job_type is the first part, job_id is the last part (timestamp)
-                            job_type = filename_parts[0]
-                            job_id = filename_parts[-1]  # Last part is the timestamp
-                        elif len(filename_parts) >= 2:
-                            # Fallback for simpler naming
-                            job_type = filename_parts[0]
-                            job_id = '_'.join(filename_parts[1:])
-                            
-                            # Try to get progress from cache
-                            progress = get_job_progress(job_id)
-                            
-                            if progress:
-                                jobs.append(progress)
-                            else:
-                                # Create basic job info from log file
-                                stat = log_file.stat()
-                                
-                                # Try to determine job status from log content
-                                job_status = 'completed'  # Default
-                                error_message = ''
-                                
-                                try:
-                                    with open(log_file, 'r', encoding='utf-8') as f:
-                                        log_content = f.read()
-                                    
-                                    # Check for error indicators in log
-                                    if 'ERROR' in log_content or '❌' in log_content:
-                                        job_status = 'failed'
-                                        # Extract error message from last error line
-                                        error_lines = [line for line in log_content.split('\n') if 'ERROR' in line or '❌' in line]
-                                        if error_lines:
-                                            error_message = error_lines[-1].strip()
-                                    
-                                    # Check for completion indicators
-                                    elif 'completed successfully' in log_content or '✅' in log_content:
-                                        job_status = 'completed'
-                                    
-                                except Exception as e:
-                                    logger.warning(f"Error reading log file {log_file} for status detection: {e}")
-                                
-                                jobs.append({
-                                    'job_id': job_id,
-                                    'job_type': job_type,
-                                    'status': job_status,
-                                    'start_time': datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                                    'total_items': 0,
-                                    'processed_items': 0,
-                                    'successful_items': 0,
-                                    'failed_items': 0,
-                                    'progress_percentage': 100,
-                                    'current_item': '',
-                                    'elapsed_time': 'N/A',
-                                    'estimated_remaining_time': None,
-                                    'error_message': error_message,
-                                    'metadata': {}
-                                })
-                    except Exception as e:
-                        logger.warning(f"Error processing log file {log_file}: {e}")
+            for log_file in log_files:
+                try:
+                    # Extract job info from filename
+                    # Format: jobtype_jobtype_jobid.log (e.g., process_mapping_process_mapping_1758817106.log)
+                    filename_parts = log_file.stem.split('_')
+                    if len(filename_parts) >= 3:
+                        # For files like process_mapping_process_mapping_1758817106.log
+                        # job_type is the first part, job_id is the last part (timestamp)
+                        job_type = filename_parts[0]
+                        job_id = filename_parts[-1]  # Last part is the timestamp
+                    elif len(filename_parts) >= 2:
+                        # Fallback for simpler naming
+                        job_type = filename_parts[0]
+                        job_id = '_'.join(filename_parts[1:])
+                    else:
                         continue
-        
-        except Exception as e:
-            logger.warning(f"Error getting jobs from cache: {e}")
+                    
+                    # Try to get progress from cache (optional)
+                    progress = None
+                    try:
+                        # Add the jobs directory to the Python path
+                        import sys
+                        import os
+                        jobs_path = os.path.join(os.path.dirname(__file__), '..', '..', 'jobs')
+                        jobs_path = os.path.abspath(jobs_path)
+                        if jobs_path not in sys.path:
+                            sys.path.insert(0, jobs_path)
+                        
+                        from jobs.utils.job_logger import get_job_progress
+                        progress = get_job_progress(job_id)
+                    except Exception as e:
+                        logger.debug(f"Could not get progress from cache for {job_id}: {e}")
+                    
+                    if progress:
+                        jobs.append(progress)
+                    else:
+                        # Create basic job info from log file
+                        stat = log_file.stat()
+                        
+                        # Try to determine job status from log content
+                        job_status = 'completed'  # Default
+                        error_message = ''
+                        
+                        try:
+                            with open(log_file, 'r', encoding='utf-8') as f:
+                                log_content = f.read()
+                            
+                            # Check for error indicators in log
+                            if 'ERROR' in log_content or '❌' in log_content:
+                                job_status = 'failed'
+                                # Extract error message from last error line
+                                error_lines = [line for line in log_content.split('\n') if 'ERROR' in line or '❌' in line]
+                                if error_lines:
+                                    error_message = error_lines[-1].strip()
+                            
+                            # Check for completion indicators
+                            elif 'completed successfully' in log_content or '✅' in log_content:
+                                job_status = 'completed'
+                            
+                        except Exception as e:
+                            logger.warning(f"Error reading log file {log_file} for status detection: {e}")
+                        
+                        jobs.append({
+                            'job_id': job_id,
+                            'job_type': job_type,
+                            'status': job_status,
+                            'start_time': datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                            'total_items': 0,
+                            'processed_items': 0,
+                            'successful_items': 0,
+                            'failed_items': 0,
+                            'progress_percentage': 100,
+                            'current_item': '',
+                            'elapsed_time': 'N/A',
+                            'estimated_remaining_time': None,
+                            'error_message': error_message,
+                            'metadata': {}
+                        })
+                except Exception as e:
+                    logger.warning(f"Error processing log file {log_file}: {e}")
+                    continue
         
         # Sort by start time (newest first)
         jobs.sort(key=lambda x: x.get('start_time', ''), reverse=True)
