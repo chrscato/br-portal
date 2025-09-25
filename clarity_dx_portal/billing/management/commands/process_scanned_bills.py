@@ -24,7 +24,11 @@ class Command(BaseCommand):
         sys.path.insert(0, jobs_dir)
         
         # Import and run the processor
-        from intake_scrape_django import process_scanned_bills
+        from intake_scrape_django import process_scanned_bills, initialize_openai_client
+        
+        # Initialize OpenAI client
+        self.stdout.write('Initializing OpenAI client...')
+        initialize_openai_client()
         
         limit = options.get('limit')
         

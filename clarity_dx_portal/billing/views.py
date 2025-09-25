@@ -2109,8 +2109,12 @@ def process_second_pass(request):
             logger.info("Ensuring jobs directory is in Python path...")
             _ensure_jobs_in_path()
             logger.info("Importing intake_scrape_django_2ndpass module...")
-            from intake_scrape_django_2ndpass import process_invalid_bills
+            from intake_scrape_django_2ndpass import process_invalid_bills, initialize_openai_client
             logger.info("Successfully imported intake_scrape_django_2ndpass")
+            
+            # Initialize OpenAI client
+            logger.info("Initializing OpenAI client...")
+            initialize_openai_client()
             
             # Get count of bills to process (only INVALID, not INVALID_2)
             invalid_count = ProviderBill.objects.filter(status='INVALID').count()
@@ -2130,7 +2134,11 @@ def process_second_pass(request):
                 logger.info(f"Starting second pass processing for specific bill: {bill_id}")
                 try:
                     # Import the second pass processor function for single bills
-                    from intake_scrape_django_2ndpass import process_single_bill_2nd_pass
+                    from intake_scrape_django_2ndpass import process_single_bill_2nd_pass, initialize_openai_client
+                    
+                    # Initialize OpenAI client for single bill processing
+                    logger.info("Initializing OpenAI client for single bill processing...")
+                    initialize_openai_client()
                     
                     # Get the bill to find its source file and error
                     bill = ProviderBill.objects.get(id=bill_id, status='INVALID')
