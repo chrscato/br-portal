@@ -18,16 +18,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from contextlib import contextmanager
 
-# Add Django project to path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'clarity_dx_portal'))
-
-# Django setup
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'clarity_dx_portal.settings')
-import django
-django.setup()
-
-from django.core.cache import cache
-from django.conf import settings
+# Django imports will be done conditionally to avoid conflicts
+# from django.core.cache import cache
+# from django.conf import settings
 
 
 @dataclass
@@ -104,15 +97,24 @@ class JobLogger:
         file_handler = logging.FileHandler(log_file, encoding='utf-8')
         file_handler.setLevel(logging.INFO)
         
+        # Create console handler for immediate feedback
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(logging.INFO)
+        
         # Create formatter
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
         file_handler.setFormatter(formatter)
+        console_handler.setFormatter(formatter)
         
-        # Add handler to logger
+        # Add handlers to logger
         self.logger.addHandler(file_handler)
+        self.logger.addHandler(console_handler)
         self.logger.setLevel(logging.INFO)
+        
+        # Prevent duplicate logs
+        self.logger.propagate = False
     
     def start_job(self, total_items: int = 0, metadata: Optional[Dict[str, Any]] = None):
         """Start a new job operation"""
@@ -243,6 +245,9 @@ class JobLogger:
     def _update_cache(self):
         """Update progress in cache for real-time monitoring"""
         try:
+            # Import Django cache dynamically to avoid conflicts
+            from django.core.cache import cache
+            
             cache_key = f"job_progress_{self.job_id}"
             cache.set(cache_key, {
                 'job_id': self.progress.job_id,
@@ -278,6 +283,9 @@ class JobLogger:
 def get_job_progress(job_id: str) -> Optional[Dict[str, Any]]:
     """Get current progress for a job"""
     try:
+        # Import Django cache dynamically to avoid conflicts
+        from django.core.cache import cache
+        
         cache_key = f"job_progress_{job_id}"
         return cache.get(cache_key)
     except Exception:

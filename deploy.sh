@@ -109,7 +109,18 @@ ssh $REMOTE_USER@$REMOTE_HOST << EOF
   echo "📦 Updating dependencies..."
   if command -v uv &> /dev/null; then
     echo "🔄 Syncing dependencies with uv..."
-    uv sync
+    if ! uv sync; then
+      echo "❌ uv sync failed, falling back to pip install"
+      if command -v python3 &> /dev/null; then
+        python3 -m pip install --upgrade pip
+        python3 -m pip install -r requirements.txt
+      else
+        pip install --upgrade pip
+        pip install -r requirements.txt
+      fi
+    else
+      echo "✅ uv sync completed successfully"
+    fi
   else
     echo "⚠️  uv not found, falling back to pip install"
     if command -v python3 &> /dev/null; then

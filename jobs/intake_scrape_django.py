@@ -655,11 +655,14 @@ def process_scraped_validation(limit: int = None):
 
 def process_scanned_bills(limit: int = None):
     """Process bills from database with status 'SCANNED'."""
+    print(f"Starting process_scanned_bills with limit: {limit}")
+    
     # Import enhanced logging
     from jobs.utils.job_logger import create_scan_processor_logger
     
     # Create job logger
     job_logger = create_scan_processor_logger()
+    print(f"Created job logger: {job_logger.job_id}")
     
     with job_logger.job_context(metadata={'limit': limit}):
         try:
@@ -714,9 +717,14 @@ import io
 if __name__ == "__main__":
     import django
     
+    print("Setting up Django and paths...")
+    
     # Add the project root and Django project to Python path
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     django_project_path = os.path.join(project_root, 'clarity_dx_portal')
+    
+    print(f"Project root: {project_root}")
+    print(f"Django project path: {django_project_path}")
     
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
@@ -725,9 +733,14 @@ if __name__ == "__main__":
     
     # Setup Django
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'clarity_dx_portal.settings')
+    print("Setting up Django...")
     django.setup()
+    print("Django setup complete")
     
     # Initialize OpenAI client after Django setup
+    print("Initializing OpenAI client...")
     initialize_openai_client()
+    print("OpenAI client initialized")
     
+    print("Starting bill processing...")
     process_scanned_bills()
