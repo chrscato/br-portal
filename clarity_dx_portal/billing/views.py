@@ -1870,37 +1870,82 @@ def intake_queue(request):
 
 @login_required
 def upload_pdf_batch(request):
-    """Upload and process a PDF batch file"""
+    """Upload and process PDF batch file(s)"""
     if request.method == 'POST':
+        # Check for single file upload (backward compatibility)
         uploaded_file = request.FILES.get('pdf_file')
+        uploaded_files = request.FILES.getlist('pdf_files')
         
-        if not uploaded_file:
-            messages.error(request, 'No PDF file selected.')
+        # Determine which upload method to use
+        if uploaded_files and len(uploaded_files) > 0:
+            # Multiple files upload
+            if not all(f.name.lower().endswith('.pdf') for f in uploaded_files):
+                messages.error(request, 'All files must be PDF files.')
+                return redirect('billing:intake_queue')
+            
+            try:
+                # Import the PDF processor
+                _ensure_jobs_in_path()
+                from pdf_intake_split import PDFIntakeProcessor
+                
+                # Process multiple uploaded PDFs
+                processor = PDFIntakeProcessor()
+                results = processor.process_multiple_uploaded_pdfs(uploaded_files, request.user.username)
+                
+                # Create success message with detailed results
+                success_count = len(results['success'])
+                failed_count = len(results['failed'])
+                total_bills = results['total_bills_created']
+                
+                if failed_count == 0:
+                    messages.success(
+                        request, 
+                        f'Successfully processed all {success_count} PDF files. '
+                        f'Created {total_bills} individual bill records.'
+                    )
+                else:
+                    messages.warning(
+                        request, 
+                        f'Processed {success_count} of {len(uploaded_files)} PDF files successfully. '
+                        f'Created {total_bills} individual bill records. '
+                        f'{failed_count} files failed to process.'
+                    )
+                    
+                    # Add detailed error messages for failed files
+                    for failed in results['failed']:
+                        messages.error(request, f'Failed to process "{failed["filename"]}": {failed["error"]}')
+                
+            except Exception as e:
+                logger.error(f"Error processing multiple PDF uploads: {e}")
+                messages.error(request, f'Error processing PDF files: {str(e)}')
+                
+        elif uploaded_file:
+            # Single file upload (original behavior)
+            if not uploaded_file.name.lower().endswith('.pdf'):
+                messages.error(request, 'Please upload a PDF file.')
+                return redirect('billing:intake_queue')
+            
+            try:
+                # Import the PDF processor
+                _ensure_jobs_in_path()
+                from pdf_intake_split import PDFIntakeProcessor
+                
+                # Process the uploaded PDF
+                processor = PDFIntakeProcessor()
+                created_bill_ids = processor.process_uploaded_pdf(uploaded_file, request.user.username)
+                
+                messages.success(
+                    request, 
+                    f'Successfully processed PDF "{uploaded_file.name}". '
+                    f'Created {len(created_bill_ids)} individual bill records.'
+                )
+                
+            except Exception as e:
+                logger.error(f"Error processing PDF upload: {e}")
+                messages.error(request, f'Error processing PDF: {str(e)}')
+        else:
+            messages.error(request, 'No PDF file(s) selected.')
             return redirect('billing:intake_queue')
-        
-        # Validate file type
-        if not uploaded_file.name.lower().endswith('.pdf'):
-            messages.error(request, 'Please upload a PDF file.')
-            return redirect('billing:intake_queue')
-        
-        try:
-            # Import the PDF processor
-            _ensure_jobs_in_path()
-            from pdf_intake_split import PDFIntakeProcessor
-            
-            # Process the uploaded PDF
-            processor = PDFIntakeProcessor()
-            created_bill_ids = processor.process_uploaded_pdf(uploaded_file, request.user.username)
-            
-            messages.success(
-                request, 
-                f'Successfully processed PDF "{uploaded_file.name}". '
-                f'Created {len(created_bill_ids)} individual bill records.'
-            )
-            
-        except Exception as e:
-            logger.error(f"Error processing PDF upload: {e}")
-            messages.error(request, f'Error processing PDF: {str(e)}')
     
     return redirect('billing:intake_queue')
 

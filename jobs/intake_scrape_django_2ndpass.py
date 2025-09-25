@@ -987,42 +987,57 @@ def process_single_bill_2nd_pass(bill_id: str, pdf_key: str, error_message: str)
 
 def process_invalid_bills(limit: int = None):
     """Process bills from database with status 'INVALID' for second pass."""
-    logger.info(f"Starting second pass processing for INVALID bills (limit: {limit or 'unlimited'})")
+    # Import enhanced logging
+    from utils.job_logger import create_second_pass_logger
     
-    try:
-        # Get bills from database
-        bills = get_invalid_bills_from_db(limit)
-        
-        if not bills:
-            logger.info("No bills with status 'INVALID' found")
-            return
-        
-        logger.info(f"Found {len(bills)} bills for second pass processing")
-        
-        successful = 0
-        failed = 0
-        
-        for i, bill in enumerate(bills, 1):
-            bill_id = bill['id']
-            source_file = bill['source_file']
-            last_error = bill['last_error']
+    # Create job logger
+    job_logger = create_second_pass_logger()
+    
+    with job_logger.job_context(metadata={'limit': limit}):
+        try:
+            # Get bills from database
+            bills = get_invalid_bills_from_db(limit)
             
-            logger.info(f"[{i}/{len(bills)}] Processing second pass for {bill_id}")
-            logger.info(f"Previous error: {last_error}")
+            if not bills:
+                job_logger.log_info("No bills with status 'INVALID' found")
+                return
             
-            # Construct the S3 key using bill_id in the archive folder
-            # PDFs are stored as: data/ProviderBills/pdf/archive/{bill_id}.pdf
-            pdf_key = f"{ARCHIVE_PREFIX}{bill_id}.pdf"
+            job_logger.log_info(f"Found {len(bills)} bills for second pass processing")
             
-            if process_single_bill_2nd_pass(bill_id, pdf_key, last_error):
-                successful += 1
-            else:
-                failed += 1
-        
-        logger.info(f"Second pass processing complete: {successful} successful, {failed} failed")
-        
-    except Exception as e:
-        logger.error(f"Error in second pass processing: {e}")
+            # Update total items for progress tracking
+            job_logger.progress.total_items = len(bills)
+            
+            successful = 0
+            failed = 0
+            
+            for i, bill in enumerate(bills, 1):
+                bill_id = bill['id']
+                source_file = bill['source_file']
+                last_error = bill['last_error']
+                
+                job_logger.log_item_start(bill_id, f"Second pass processing {i}/{len(bills)}")
+                job_logger.log_info(f"Previous error: {last_error}")
+                
+                # Construct the S3 key using bill_id in the archive folder
+                # PDFs are stored as: data/ProviderBills/pdf/archive/{bill_id}.pdf
+                pdf_key = f"{ARCHIVE_PREFIX}{bill_id}.pdf"
+                
+                try:
+                    if process_single_bill_2nd_pass(bill_id, pdf_key, last_error):
+                        successful += 1
+                        job_logger.log_item_success(bill_id, "Second pass processing successful")
+                    else:
+                        failed += 1
+                        job_logger.log_item_error(bill_id, "Second pass processing failed", "process_single_bill_2nd_pass returned False")
+                except Exception as e:
+                    failed += 1
+                    job_logger.log_item_error(bill_id, f"Exception during second pass: {str(e)}")
+            
+            job_logger.log_info(f"Second pass processing complete: {successful} successful, {failed} failed")
+            
+        except Exception as e:
+            job_logger.log_error(f"Error in second pass processing: {e}", e)
+            raise
 
 if __name__ == "__main__":
     import sys

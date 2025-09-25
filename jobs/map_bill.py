@@ -197,40 +197,57 @@ def process_mapping():
     """Process all ProviderBill records that need mapping using Django ORM."""
     # Import Django models locally to avoid import issues
     from billing.models import ProviderBill
+    from utils.job_logger import create_mapping_logger
     
-    try:
-        # Get all bills that need mapping (status = 'VALID' and action = 'to_map')
-        bills = ProviderBill.objects.filter(status='VALID', action='to_map')
-        total = len(bills)
-        logger.info(f"🔁 Mapping {total} bills...")
-
-        mapped = 0
-        duplicate = 0
-        unmapped = 0
-
-        for bill in bills:
-            bill_id = bill.id
-            logger.info(f"Mapping bill {bill_id}")
+    # Create job logger
+    job_logger = create_mapping_logger()
+    
+    with job_logger.job_context():
+        try:
+            # Get all bills that need mapping (status = 'VALID' and action = 'to_map')
+            bills = ProviderBill.objects.filter(status='VALID', action='to_map')
+            total = len(bills)
+            job_logger.log_info(f"Mapping {total} bills...")
             
-            # Perform mapping
-            status, action, error = map_provider_bill_django(bill_id)
-            
-            if status == "MAPPED":
-                mapped += 1
-            elif status == "DUPLICATE":
-                duplicate += 1
-            elif status == "UNMAPPED":
-                unmapped += 1
+            # Update total items for progress tracking
+            job_logger.progress.total_items = total
 
-        print(f"\n✅ Summary:")
-        print(f"- MAPPED: {mapped}")
-        print(f"- DUPLICATE: {duplicate}")
-        print(f"- UNMAPPED: {unmapped}")
-        print(f"- TOTAL: {total}\n")
-        logger.info("✅ Mapping complete.")
+            mapped = 0
+            duplicate = 0
+            unmapped = 0
+            failed = 0
 
-    except Exception as e:
-        logger.error(f"❌ Error in mapping process: {str(e)}")
+            for i, bill in enumerate(bills, 1):
+                bill_id = bill.id
+                job_logger.log_item_start(bill_id, f"Mapping bill {i}/{total}")
+                
+                try:
+                    # Perform mapping
+                    status, action, error = map_provider_bill_django(bill_id)
+                    
+                    if status == "MAPPED":
+                        mapped += 1
+                        job_logger.log_item_success(bill_id, f"Mapped successfully")
+                    elif status == "DUPLICATE":
+                        duplicate += 1
+                        job_logger.log_item_success(bill_id, f"Identified as duplicate")
+                    elif status == "UNMAPPED":
+                        unmapped += 1
+                        job_logger.log_item_success(bill_id, f"No matching order found")
+                    else:
+                        failed += 1
+                        job_logger.log_item_error(bill_id, f"Unexpected status: {status}")
+                        
+                except Exception as e:
+                    failed += 1
+                    job_logger.log_item_error(bill_id, f"Exception during mapping: {str(e)}")
+
+            job_logger.log_info(f"Mapping complete - MAPPED: {mapped}, DUPLICATE: {duplicate}, UNMAPPED: {unmapped}, FAILED: {failed}")
+            job_logger.log_info(f"Total processed: {total}")
+
+        except Exception as e:
+            job_logger.log_error(f"Error in mapping process: {str(e)}", e)
+            raise
 
 
 def run_diagnostic(bill_id: str):

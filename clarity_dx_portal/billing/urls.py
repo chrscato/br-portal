@@ -4,6 +4,7 @@ URL configuration for billing app
 
 from django.urls import path
 from . import views
+from . import views_job_monitoring
 
 app_name = 'billing'
 
@@ -57,4 +58,11 @@ urlpatterns = [
     # Order search
     path('search/', views.order_search, name='order_search'),
     path('order/<str:order_id>/', views.order_detail, name='order_detail'),
+    
+    # Job monitoring API endpoints
+    path('api/jobs/progress/<str:job_id>/', views_job_monitoring.get_job_progress, name='job_progress'),
+    path('api/jobs/logs/<str:job_id>/', views_job_monitoring.get_job_logs, name='job_logs'),
+    path('api/jobs/active/', views_job_monitoring.list_active_jobs, name='active_jobs'),
+    path('api/jobs/summary/', views_job_monitoring.get_job_status_summary, name='job_summary'),
+    path('api/jobs/cancel/<str:job_id>/', views_job_monitoring.cancel_job, name='cancel_job'),
 ]

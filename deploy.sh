@@ -82,13 +82,20 @@ ssh $REMOTE_USER@$REMOTE_HOST << EOF
     git reset --hard origin/\$CURRENT_BRANCH
   fi
   
-  # Update dependencies with uv if requirements.txt changed
-  echo "📦 Checking for dependency updates..."
+  # Update dependencies
+  echo "📦 Updating dependencies..."
   if command -v uv &> /dev/null; then
-    echo "🔄 Updating dependencies with uv..."
-    uv pip install -r requirements.txt
+    echo "🔄 Syncing dependencies with uv..."
+    uv sync
   else
-    echo "⚠️  uv not found, skipping dependency update"
+    echo "⚠️  uv not found, falling back to pip install"
+    if command -v python3 &> /dev/null; then
+      python3 -m pip install --upgrade pip
+      python3 -m pip install -r requirements.txt
+    else
+      pip install --upgrade pip
+      pip install -r requirements.txt
+    fi
   fi
 
   echo "🔄 Restarting app in tmux session '$TMUX_SESSION'..."

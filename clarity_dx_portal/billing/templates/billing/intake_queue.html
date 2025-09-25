@@ -62,12 +62,34 @@
                         <form method="post" action="{% url 'billing:upload_pdf_batch' %}" enctype="multipart/form-data">
                             {% csrf_token %}
                             <div class="modal-body">
+                                <!-- Single file upload (original) -->
                                 <div class="mb-3">
-                                    <label for="pdf_file" class="form-label">Select PDF File</label>
-                                    <input type="file" class="form-control" id="pdf_file" name="pdf_file" accept=".pdf" required>
+                                    <label for="pdf_file" class="form-label">Select Single PDF File</label>
+                                    <input type="file" class="form-control" id="pdf_file" name="pdf_file" accept=".pdf">
                                     <div class="form-text">
-                                        Upload a multi-page PDF file. It will be automatically split into individual pages and uploaded to S3.
+                                        Upload a single multi-page PDF file. It will be automatically split into individual pages and uploaded to S3.
                                     </div>
+                                </div>
+                                
+                                <!-- Divider -->
+                                <div class="text-center my-3">
+                                    <span class="text-muted">OR</span>
+                                </div>
+                                
+                                <!-- Multiple files upload -->
+                                <div class="mb-3">
+                                    <label for="pdf_files" class="form-label">Select Multiple PDF Files</label>
+                                    <input type="file" class="form-control" id="pdf_files" name="pdf_files" accept=".pdf" multiple>
+                                    <div class="form-text">
+                                        Upload multiple PDF files at once. Each file will be split into individual pages and uploaded to S3.
+                                        <br><strong>Note:</strong> Hold Ctrl (or Cmd on Mac) to select multiple files.
+                                    </div>
+                                </div>
+                                
+                                <!-- File selection info -->
+                                <div id="file-info" class="alert alert-info" style="display: none;">
+                                    <strong>Selected files:</strong>
+                                    <ul id="file-list" class="mb-0 mt-2"></ul>
                                 </div>
                             </div>
                             <div class="modal-footer">
@@ -77,6 +99,56 @@
                                 </button>
                             </div>
                         </form>
+                        
+                        <script>
+                        // Handle file selection display
+                        document.getElementById('pdf_file').addEventListener('change', function() {
+                            if (this.files.length > 0) {
+                                // Clear multiple files selection
+                                document.getElementById('pdf_files').value = '';
+                                updateFileInfo();
+                            }
+                        });
+                        
+                        document.getElementById('pdf_files').addEventListener('change', function() {
+                            if (this.files.length > 0) {
+                                // Clear single file selection
+                                document.getElementById('pdf_file').value = '';
+                                updateFileInfo();
+                            }
+                        });
+                        
+                        function updateFileInfo() {
+                            const singleFile = document.getElementById('pdf_file').files[0];
+                            const multipleFiles = document.getElementById('pdf_files').files;
+                            const fileInfo = document.getElementById('file-info');
+                            const fileList = document.getElementById('file-list');
+                            
+                            fileList.innerHTML = '';
+                            
+                            if (singleFile) {
+                                fileInfo.style.display = 'block';
+                                fileList.innerHTML = `<li>${singleFile.name} (${formatFileSize(singleFile.size)})</li>`;
+                            } else if (multipleFiles.length > 0) {
+                                fileInfo.style.display = 'block';
+                                Array.from(multipleFiles).forEach(file => {
+                                    const li = document.createElement('li');
+                                    li.textContent = `${file.name} (${formatFileSize(file.size)})`;
+                                    fileList.appendChild(li);
+                                });
+                            } else {
+                                fileInfo.style.display = 'none';
+                            }
+                        }
+                        
+                        function formatFileSize(bytes) {
+                            if (bytes === 0) return '0 Bytes';
+                            const k = 1024;
+                            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                            const i = Math.floor(Math.log(bytes) / Math.log(k));
+                            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                        }
+                        </script>
                     </div>
                 </div>
             </div>

@@ -646,43 +646,58 @@ def process_scraped_validation(limit: int = None):
 
 def process_scanned_bills(limit: int = None):
     """Process bills from database with status 'SCANNED'."""
-    logger.info("Starting database bill processing for SCANNED status")
+    # Import enhanced logging
+    from utils.job_logger import create_scan_processor_logger
     
-    try:
-        # Get bills from database
-        bills = get_scanned_bills_from_db(limit)
-        
-        if not bills:
-            logger.info("No bills with status 'SCANNED' found")
-            return
-        
-        logger.info(f"Found {len(bills)} bills to process")
-        
-        successful = 0
-        failed = 0
-        
-        for i, bill in enumerate(bills, 1):
-            bill_id = bill['id']
-            source_file = bill['source_file']
+    # Create job logger
+    job_logger = create_scan_processor_logger()
+    
+    with job_logger.job_context(metadata={'limit': limit}):
+        try:
+            # Get bills from database
+            bills = get_scanned_bills_from_db(limit)
             
-            logger.info(f"[{i}/{len(bills)}] Processing {bill_id}")
+            if not bills:
+                job_logger.log_info("No bills with status 'SCANNED' found")
+                return
             
-            # Construct the S3 key from source_file
-            if source_file and source_file.startswith('data/ProviderBills/pdf/'):
-                pdf_key = source_file
-            else:
-                # Fallback: construct key from bill_id
-                pdf_key = f"{INPUT_PREFIX}{bill_id}.pdf"
+            job_logger.log_info(f"Found {len(bills)} bills to process")
             
-            if process_single_bill(bill_id, pdf_key):
-                successful += 1
-            else:
-                failed += 1
-        
-        logger.info(f"Processing complete: {successful} successful, {failed} failed")
-        
-    except Exception as e:
-        logger.error(f"Error in database processing: {e}")
+            # Update total items for progress tracking
+            job_logger.progress.total_items = len(bills)
+            
+            successful = 0
+            failed = 0
+            
+            for i, bill in enumerate(bills, 1):
+                bill_id = bill['id']
+                source_file = bill['source_file']
+                
+                job_logger.log_item_start(bill_id, f"Processing bill {i}/{len(bills)}")
+                
+                # Construct the S3 key from source_file
+                if source_file and source_file.startswith('data/ProviderBills/pdf/'):
+                    pdf_key = source_file
+                else:
+                    # Fallback: construct key from bill_id
+                    pdf_key = f"{INPUT_PREFIX}{bill_id}.pdf"
+                
+                try:
+                    if process_single_bill(bill_id, pdf_key):
+                        successful += 1
+                        job_logger.log_item_success(bill_id, "Successfully processed")
+                    else:
+                        failed += 1
+                        job_logger.log_item_error(bill_id, "Processing failed", "process_single_bill returned False")
+                except Exception as e:
+                    failed += 1
+                    job_logger.log_item_error(bill_id, f"Exception during processing: {str(e)}")
+            
+            job_logger.log_info(f"Processing complete: {successful} successful, {failed} failed")
+            
+        except Exception as e:
+            job_logger.log_error(f"Error in database processing: {e}", e)
+            raise
 
 # Import io for BytesIO
 import io
